@@ -31,7 +31,7 @@ class ConversationMessagesSerializer(serializers.ModelSerializer):
     messages = MessageSerializer(many=True, read_only=True)
     class Meta:
         model = Conversation
-        fields = '__all__'
+        fields = ['messages']
 
 class CreateConversationSerializer(serializers.ModelSerializer):
     class Meta:

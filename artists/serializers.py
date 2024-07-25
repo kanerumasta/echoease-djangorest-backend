@@ -2,7 +2,7 @@
 from rest_framework import serializers
 
 from .models import PortfolioItem, Portfolio, Artist
-from users.serializers import UserAccountSerializer
+from users.serializers import UserDetailSerializer
 
 class PortfolioItemSerializer(serializers.ModelSerializer):
     class Meta:
@@ -29,15 +29,14 @@ class PortfolioSerializer(serializers.ModelSerializer):
 
 
 class ArtistSerializer(serializers.ModelSerializer):
-    
+    user = UserDetailSerializer(read_only=True)
     class Meta:
         model = Artist
         fields = ['id','user', 'stage_name']
-    
+
 
 
 class ArtistDetailSerializer(serializers.ModelSerializer):
-    
     class Meta:
         model = Artist
         fields = '__all__'

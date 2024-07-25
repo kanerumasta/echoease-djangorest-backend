@@ -74,8 +74,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
         self.room_group_name = f"chat_{self.room_name}"
         self.conversation = await self.get_conversation_or_404(self.room_name)
 
-        if self.scope["user"] == AnonymousUser():
-            return
+        # if self.scope["user"] == AnonymousUser():
+        #     return
         print(self.conversation)
         await self.channel_layer.group_add(self.room_group_name, self.channel_name)
         await self.accept()
