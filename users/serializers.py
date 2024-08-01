@@ -10,7 +10,7 @@ class UserAccountSerializer (ModelSerializer):
 class VerifyProfileSerializer(ModelSerializer):
     class Meta:
         model = Profile
-        fields = ['dob','gender', 'phone','street','brgy', 'city', 'country', 'postal_code']
+        fields = ['dob','gender', 'phone','street','brgy', 'city', 'country', 'zipcode']
 
 
 class ProfileSerializer(ModelSerializer):

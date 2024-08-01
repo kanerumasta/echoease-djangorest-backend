@@ -88,7 +88,7 @@ class Profile(models.Model):
     brgy = models.CharField(max_length=60, null=True, blank=True)
     city = models.CharField(max_length=255, null=True, blank=True)  # or town
     country = models.CharField(max_length=255, null=True, blank=True)
-    postal_code = models.CharField(max_length=10, null=True, blank=True)
+    zipcode = models.CharField(max_length=10, null=True, blank=True)
 
     # Photos
     profile_image = CloudinaryField(

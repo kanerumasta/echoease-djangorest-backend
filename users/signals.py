@@ -11,5 +11,5 @@ def create_user_profile(sender, instance, created, **kwargs):
             profile.user = instance
             profile.save()
         except:
-            print(f'ERROR: cant create profile to user {instance.fullname}')
+            print(f'ERROR: cant create profile to user {instance.full_name}')
         
