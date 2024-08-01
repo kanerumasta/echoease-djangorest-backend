@@ -138,8 +138,8 @@ env/
 venv/
 ENV/
 env.bak/
-.env.local
 venv.bak/
+.env.local
 
 # Spyder project settings
 .spyderproject
