@@ -1,13 +1,9 @@
 from rest_framework import serializers
 from .models import Conversation, Message
 from django.conf import settings
+from users.serializers import UserAccountSerializer
 
 User = settings.AUTH_USER_MODEL
-
-class ChatUserSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = User
-        fields = ['email', 'first_name', 'last_name']
 
 class MessageSerializer(serializers.ModelSerializer):
     
@@ -22,9 +18,10 @@ class MessageSerializer(serializers.ModelSerializer):
 
 
 class ConversationSerializer(serializers.ModelSerializer):
+    participants = UserAccountSerializer(read_only=True, many=True)
     class Meta:
         model = Conversation
-        fields = '__all__'
+        fields = ['code', 'participants']
 
 
 class ConversationMessagesSerializer(serializers.ModelSerializer):
@@ -37,6 +34,10 @@ class CreateConversationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Conversation
         fields = ['users']
+
+# class CreateConversationSerializer(serializers.Serializer):
+#     email = serializers.EmailField()
+    
     
 
 

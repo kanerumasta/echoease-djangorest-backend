@@ -5,7 +5,7 @@ from django.core.exceptions import ValidationError
 
 class Conversation(models.Model):
     code = models.UUIDField(primary_key=True, default=uuid.uuid4)
-    users = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name="conversations")
+    participants = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name="conversations")
 
     def __str__(self):
         return str(self.code)
@@ -24,8 +24,8 @@ class Message(models.Model):
     def save(self, *args, **kwargs):
         if self.conversation:
             if self.author:
-                if not self.conversation.users.filter(id=self.author.id).exists():
-                    raise ValidationError('Author should be part of the conversations users')
+                if not self.conversation.participants.filter(id=self.author.id).exists():
+                    raise ValidationError('Author should be part of the conversations participants')
         super().save(*args,**kwargs)
                 
     

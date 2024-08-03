@@ -9,6 +9,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from .serializers import VerifyProfileSerializer
+from rest_framework.decorators import api_view
 
 
 class CustomProviderAuthView(ProviderAuthView):
@@ -129,5 +130,13 @@ class VerifyProfileView(APIView):
             return Response({},status = status.HTTP_204_NO_CONTENT)
         else:
             return Response(serializer.errors, status = status.HTTP_400_BAD_REQUEST)
+        
+
+@api_view(['GET'])
+def is_artist(request):
+    user = request.user
+    if user.is_artist:
+        return Response({}, status=status.HTTP_204_NO_CONTENT)
+    return Response({'message':'error'}, status=status.HTTP_400_BAD_REQUEST)
         
             

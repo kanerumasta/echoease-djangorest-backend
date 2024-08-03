@@ -2,6 +2,21 @@ from django.db import models
 from django.conf import settings
 from cloudinary.models import CloudinaryField
 from django.utils.text import slugify
+from django.contrib.auth import get_user_model
+
+
+User = get_user_model()
+
+
+
+class ArtistApplication(models.Model):
+    status = [
+        ('under_review', 'Under Review'),
+        ('approved','Approved'),
+        ('rejected','Rejected')
+    ]
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    
 
 
 class Artist(models.Model):
