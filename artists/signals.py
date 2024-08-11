@@ -4,14 +4,13 @@ from django.dispatch import receiver
 from .models import Artist, Portfolio
 
 @receiver(post_save, sender = Artist)
-def generate_slug_stage_name(sender, instance,created, **kwargs):
+def generate_slug(sender, instance,created, **kwargs):
     if created:
         try:
             instance.slug = instance.user.full_name.replace(' ','-')
-            instance.stage_name = instance.user.full_name
             instance.save()
         except:
-            print('ERROR(signals): cant generate slug or stage name')
+            print('ERROR(signals): cant generate slug')
 
 @receiver(post_save, sender = Artist)
 def create_portfolio(sender, instance, created, **kwargs):

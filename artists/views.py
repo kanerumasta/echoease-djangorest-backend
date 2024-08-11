@@ -5,8 +5,9 @@ from rest_framework.views import APIView
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.exceptions import ValidationError
+from .models import ArtistApplication, Artist
 
 
 from .permissions import IsArtist, IsVerifiedUser
@@ -85,6 +86,69 @@ class PortfolioItemView(APIView):
                 serializer.save()
                 return Response(serializer.data, status = status.HTTP_200_OK)
             return Response(serializer.errors, status = status.HTTP_400_BAD_REQUEST)
+        
+class ArtistApplicationView(APIView):
+    def post(self, request):
+        #check user is verified here
+        try:
+        
+            user = request.user
+            print(request.data)
+            serializer = ArtistApplicationSerializer(data = request.data)
+            if serializer.is_valid(raise_exception = True):
+                print(serializer.validated_data)
+                serializer.validated_data['user'] = user
+                serializer.save()
+                return Response({'message':'Your application is in process.'}, status = status.HTTP_201_CREATED)
+            
+            return Response(serializer.errors, status= status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            print(e)
+            return Response({}, status = status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+# #admin review
+# class ReviewArtistApplicationView(APIView):
+#     permission_classes = IsAdminUser
+
+#     def post(self, request):
+#         try:
+#             application_id = request.data['application_id']
+#             action = request.data['action']
+#             application = get_object_or_404(ArtistApplication, id = application_id)
+#             if application:
+#                 if action == 'approve':
+#                     application.status = 'approved'
+#                     new_artist = Artist.objects.create(
+#                         user = application.user, 
+#                         dob = application.dob,
+#                         gender = application.gender,
+#                         phone = application.phone,
+#                         bio = application.bio,
+#                         street = application.street,
+#                         brgy = application.brgy,
+#                         city = application.city,
+#                         country = application.country,
+#                         zipcode = application.zipcode,
+#                         profile_image = application.profile_image,
+#                         fb_page = application.fb_page,
+#                         instagram = application.instagram,
+#                         twitter = application.twitter,
+#                         fb_profile_link = application.fb_profile_link,
+#                         )
+                    
+#                     print(new_artist)
+
+#                     new_artist.save()
+                    
+#                 elif action == 'reject':
+#                     application.status = 'rejected'
+#                 else:
+#                     return Response({'message':'action not foundd'}, status = status.HTTP_404_NOT_FOUND)
+#                 application.save()
+#                 return Response({'message':f'application {action} successful'})
+#         except Exception as e:
+#             print(e)
+#             return Response({'message':'error'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @api_view(['POST'])

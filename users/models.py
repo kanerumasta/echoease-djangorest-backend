@@ -74,11 +74,10 @@ class UserAccount(AbstractBaseUser, PermissionsMixin):
         return self.email
 
 
-class Profile(models.Model):
+class ClientProfile(models.Model):
 
     dob = models.DateField(blank=True, null=True, validators=[date_not_future])
     gender = models.CharField(max_length=20, null=True, blank=True)
-    bio = models.TextField(null=True, blank=True)
 
     # Contacts
     phone = models.CharField(max_length=20, blank=True, null=True)
@@ -93,14 +92,9 @@ class Profile(models.Model):
     # Photos
     profile_image = CloudinaryField(
         'profile_image', null=True, default=None, blank=True)
-    cover_photo = CloudinaryField(
-        'cover_photo', null=True, blank=True, default=None)
 
     # Socials
     fb_page = models.CharField(max_length=255, null=True, blank=True)
-    instagram = models.CharField(max_length=255, null=True, blank=True)
-    twitter = models.CharField(max_length=255, null=True, blank=True)
-    fb_profile_link = models.CharField(max_length=255, null=True, blank=True)
 
     # Relationships
     user = models.OneToOneField(
@@ -108,3 +102,4 @@ class Profile(models.Model):
 
     def __str__(self):
         return f'{self.user}'
+

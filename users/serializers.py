@@ -1,5 +1,5 @@
 from rest_framework.serializers import ModelSerializer
-from .models import Profile, UserAccount
+from .models import ClientProfile, UserAccount
 
 class UserAccountSerializer (ModelSerializer):
     class Meta:
@@ -9,13 +9,13 @@ class UserAccountSerializer (ModelSerializer):
 
 class VerifyProfileSerializer(ModelSerializer):
     class Meta:
-        model = Profile
+        model = ClientProfile
         fields = ['dob','gender', 'phone','street','brgy', 'city', 'country', 'zipcode']
 
 
 class ProfileSerializer(ModelSerializer):
     class Meta:
-        model = Profile
+        model = ClientProfile
         fields = '__all__'
 
 class UserDetailSerializer(ModelSerializer):

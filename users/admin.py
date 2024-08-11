@@ -1,10 +1,10 @@
 from django.contrib import admin
 from .models import (
     UserAccount,
-    Profile
+    ClientProfile
 )
 
 class CustomAdminModel(admin.ModelAdmin):
     list_display=['pk', '__str__']
 
-admin.site.register([UserAccount, Profile],CustomAdminModel)
+admin.site.register([UserAccount, ClientProfile],CustomAdminModel)
