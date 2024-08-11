@@ -7,7 +7,7 @@ from .models import Artist, Portfolio
 def generate_slug(sender, instance,created, **kwargs):
     if created:
         try:
-            instance.slug = instance.user.full_name.replace(' ','-')
+            instance.slug = instance.user.full_name.replace(' ','-').lower()
             instance.save()
         except:
             print('ERROR(signals): cant generate slug')

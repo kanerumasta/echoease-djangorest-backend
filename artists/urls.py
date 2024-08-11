@@ -2,7 +2,8 @@ from django.urls import path
 from .views import (
     ArtistView,
     follow_artist,
-    ArtistApplicationView
+    ArtistApplicationView,
+    get_my_artist_profile
 )
 
 
@@ -12,5 +13,6 @@ urlpatterns = [
     path('apply/', ArtistApplicationView.as_view()),
     path('follow-artist/', follow_artist),
     path('unfollow-artist/', follow_artist),
+    path('my-artist-profile/', get_my_artist_profile)
 ]
   

@@ -2,12 +2,13 @@ from django.shortcuts import get_object_or_404
 from django.contrib.auth.models import AnonymousUser
 
 from rest_framework.views import APIView
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.exceptions import ValidationError
 from .models import ArtistApplication, Artist
+from .permissions import IsArtist
 
 
 from .permissions import IsArtist, IsVerifiedUser
@@ -106,52 +107,8 @@ class ArtistApplicationView(APIView):
             print(e)
             return Response({}, status = status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-# #admin review
-# class ReviewArtistApplicationView(APIView):
-#     permission_classes = IsAdminUser
-
-#     def post(self, request):
-#         try:
-#             application_id = request.data['application_id']
-#             action = request.data['action']
-#             application = get_object_or_404(ArtistApplication, id = application_id)
-#             if application:
-#                 if action == 'approve':
-#                     application.status = 'approved'
-#                     new_artist = Artist.objects.create(
-#                         user = application.user, 
-#                         dob = application.dob,
-#                         gender = application.gender,
-#                         phone = application.phone,
-#                         bio = application.bio,
-#                         street = application.street,
-#                         brgy = application.brgy,
-#                         city = application.city,
-#                         country = application.country,
-#                         zipcode = application.zipcode,
-#                         profile_image = application.profile_image,
-#                         fb_page = application.fb_page,
-#                         instagram = application.instagram,
-#                         twitter = application.twitter,
-#                         fb_profile_link = application.fb_profile_link,
-#                         )
-                    
-#                     print(new_artist)
-
-#                     new_artist.save()
-                    
-#                 elif action == 'reject':
-#                     application.status = 'rejected'
-#                 else:
-#                     return Response({'message':'action not foundd'}, status = status.HTTP_404_NOT_FOUND)
-#                 application.save()
-#                 return Response({'message':f'application {action} successful'})
-#         except Exception as e:
-#             print(e)
-#             return Response({'message':'error'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def follow_artist(request):
     user = request.user
     serializer = FollowArtistSerializer(data = request.data)
@@ -190,6 +147,15 @@ def unfollow_artist(request):
 
         
     
-    
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, IsArtist])
+def get_my_artist_profile(request):
+    try:
 
-
+        user = request.user
+        artist = get_object_or_404(Artist, id = user.id)
+        serializer = ArtistSerializer(artist)
+        return Response(serializer.data, status = status.HTTP_200_OK)
+    except Exception as e:
+        print(e)
+        return Response({'message ':'unexpected error occured'}, status = status.HTTP_500_INTERNAL_SERVER_ERROR)

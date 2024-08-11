@@ -29,10 +29,10 @@ class PortfolioSerializer(serializers.ModelSerializer):
 
 
 class ArtistSerializer(serializers.ModelSerializer):
-    user = UserDetailSerializer(read_only=True)
+    # user = UserDetailSerializer(read_only=True)
     class Meta:
         model = Artist
-        fields = ['id','user', 'stage_name']
+        fields = '__all__'
 
 
 
