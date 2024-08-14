@@ -12,7 +12,7 @@ class ConversationView(APIView):
     def get(self,request,code = None):
         if code:
             conversation = Conversation.objects.get(code = code)
-            serializer = ConversationMessagesSerializer(conversation)
+            serializer = ConversationSerializer(conversation)
             return Response(serializer.data, status = status.HTTP_200_OK)
     
         conversations = Conversation.objects.filter(participants=request.user)

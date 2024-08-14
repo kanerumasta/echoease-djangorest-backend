@@ -10,6 +10,8 @@ from rest_framework.response import Response
 from rest_framework import status
 from .serializers import VerifyProfileSerializer
 from rest_framework.decorators import api_view
+from .models import UserAccount
+from django.shortcuts import get_object_or_404
 
 
 class CustomProviderAuthView(ProviderAuthView):
@@ -140,3 +142,10 @@ def is_artist(request):
     return Response({'message':'error'}, status=status.HTTP_400_BAD_REQUEST)
         
             
+
+
+# @api_view('GET')
+# def get_profile_pic(request, email):
+#     user = get_object_or_404(UserAccount, email = email)
+#     # if user:
+#     #     user.

@@ -43,6 +43,8 @@ class UserAccount(AbstractBaseUser, PermissionsMixin):
         max_length=255,
         unique=True,
     )
+    profile_image = CloudinaryField(
+        'profile_image', null=True, default=None, blank=True)
     is_verified = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
@@ -90,8 +92,7 @@ class ClientProfile(models.Model):
     zipcode = models.CharField(max_length=10, null=True, blank=True)
 
     # Photos
-    profile_image = CloudinaryField(
-        'profile_image', null=True, default=None, blank=True)
+   
 
     # Socials
     fb_page = models.CharField(max_length=255, null=True, blank=True)

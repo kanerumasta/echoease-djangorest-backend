@@ -36,7 +36,7 @@ class ArtistApplication(models.Model):
     zipcode = models.CharField(max_length=10)
 
     # Photos
-    profile_image = CloudinaryField(
+    cover_photo = CloudinaryField(
         'profile_image', null=True, default=None, blank=True)
     
 
@@ -82,8 +82,6 @@ class Artist(models.Model):
     zipcode = models.CharField(max_length=10, null=True, blank=True)
 
     # Photos
-    profile_image = CloudinaryField(
-        'profile_image', null=True, default=None, blank=True)
     cover_photo = CloudinaryField(
         'cover_photo', null=True, blank=True, default=None)
 
