@@ -2,7 +2,7 @@
 from rest_framework import serializers
 
 from .models import PortfolioItem, Portfolio, Artist, ArtistApplication
-from users.serializers import UserDetailSerializer
+from users.serializers import UserDetailSerializer, UserAccountSerializer
 
 class PortfolioItemSerializer(serializers.ModelSerializer):
     class Meta:
@@ -29,26 +29,10 @@ class PortfolioSerializer(serializers.ModelSerializer):
 
 
 class ArtistSerializer(serializers.ModelSerializer):
-    # user = UserDetailSerializer(read_only=True)
-    #  dob : z.string().date(),
-    # gender : z.string(),
-    # bio : z.string(),
-    # brgy:z.string(),
-    # city:z.string(),
-    # country:z.string(),
-    # cover_photo : z.string(),
-    # fb_page : z.string(),
-    # fb_profile_link : z.string(),
-    # id:z.number(),
-    # user:z.number(),
-    # phone : z.string(),
-    # slug : z.string(),
-    # street: z.string(),
-    # twitter : z.string(),
-    # zipcode : z.string()
+    user = UserAccountSerializer()
     class Meta:
         model = Artist
-        fields = ['dob','gender','bio','brgy','city','country','profile_image','cover_photo','fb_page','fb_profile_link','id','user','phone','slug','street','twitter','zipcode']
+        fields = ['dob','gender','bio','brgy','city','country','cover_photo','fb_page','fb_profile_link','id','user','phone','slug','street','twitter','zipcode']
 
 
 

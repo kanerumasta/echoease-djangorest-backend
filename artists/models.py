@@ -25,7 +25,7 @@ class ArtistApplication(models.Model):
     gender = models.CharField(max_length=20, null=True, blank=True)
     bio = models.TextField(null=True, blank=True)
 
-    # Contacts
+    # Contacts'
     phone = models.CharField(max_length=20)
 
     # Address
@@ -36,8 +36,10 @@ class ArtistApplication(models.Model):
     zipcode = models.CharField(max_length=10)
 
     # Photos
+    # profile_pic = CloudinaryField('profile_pic',null=True, blank=True)
+
     cover_photo = CloudinaryField(
-        'profile_image', null=True, default=None, blank=True)
+        'cover_photo', null=True, default=None, blank=True)
     
 
     # Socials
@@ -82,6 +84,7 @@ class Artist(models.Model):
     zipcode = models.CharField(max_length=10, null=True, blank=True)
 
     # Photos
+    # profile_pic = CloudinaryField('profile_pic',null=True, blank=True)
     cover_photo = CloudinaryField(
         'cover_photo', null=True, blank=True, default=None)
 

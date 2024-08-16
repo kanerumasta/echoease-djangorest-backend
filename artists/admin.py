@@ -31,7 +31,6 @@ class ArtistApplicationAdmin(admin.ModelAdmin):
                     city = application.city,
                     country = application.country,
                     zipcode = application.zipcode,
-                    profile_image = application.profile_image,
                     fb_page = application.fb_page,
                     instagram = application.instagram,
                     twitter = application.twitter,

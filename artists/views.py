@@ -11,7 +11,6 @@ from .models import ArtistApplication, Artist
 from .permissions import IsArtist
 
 
-from .permissions import IsArtist, IsVerifiedUser
 from .serializers import (
                             ArtistApplicationSerializer,
                             ArtistSerializer ,
@@ -23,7 +22,7 @@ from .models import Artist, PortfolioItem, Portfolio
 
 
 class ArtistView(APIView):
-    permission_classes = [IsAuthenticated, IsVerifiedUser]
+    permission_classes = [IsAuthenticated] #ADD ISVERIFIED USER HERE
     def post(self, request):
         data = request.data
         serializer = ArtistApplicationSerializer(data = data)

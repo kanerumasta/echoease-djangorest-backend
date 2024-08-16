@@ -9,9 +9,10 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from .serializers import VerifyProfileSerializer
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
 from .models import UserAccount
 from django.shortcuts import get_object_or_404
+
 
 
 class CustomProviderAuthView(ProviderAuthView):
@@ -135,8 +136,10 @@ class VerifyProfileView(APIView):
         
 
 @api_view(['GET'])
-def is_artist(request):
+def is_artist(request):   
     user = request.user
+    print(user)
+    print(user.is_artist)
     if user.is_artist:
         return Response({}, status=status.HTTP_204_NO_CONTENT)
     return Response({'message':'error'}, status=status.HTTP_400_BAD_REQUEST)

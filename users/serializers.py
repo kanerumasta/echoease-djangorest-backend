@@ -4,7 +4,7 @@ from .models import ClientProfile, UserAccount
 class UserAccountSerializer (ModelSerializer):
     class Meta:
         model = UserAccount
-        fields = ['first_name', 'last_name', 'email', 'id']
+        fields = ['first_name', 'last_name', 'email', 'id', 'profile_image']
 
 
 class VerifyProfileSerializer(ModelSerializer):
