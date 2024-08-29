@@ -9,7 +9,8 @@ from .views import (
 
 urlpatterns = [
     path('', ArtistView.as_view()),
-    path('<int:pk>', ArtistView.as_view()),
+    path('<int:pk>', ArtistView.as_view(), name='get-artist-by-pk'),
+    path('slug/<slug:slug>', ArtistView.as_view(), name='get-artist-by-slug'),
     path('apply/', ArtistApplicationView.as_view()),
     path('follow-artist/', follow_artist),
     path('unfollow-artist/', follow_artist),

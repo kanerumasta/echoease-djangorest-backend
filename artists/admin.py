@@ -6,7 +6,8 @@ from .models import (
     Artist,
     Portfolio,
     PortfolioItem,
-    Artist
+    Artist,
+    Genre
 )
 
 
@@ -49,3 +50,4 @@ class ArtistApplicationAdmin(admin.ModelAdmin):
 
 admin.site.register(ArtistApplication, ArtistApplicationAdmin)
 admin.site.register(Artist)
+admin.site.register(Genre)

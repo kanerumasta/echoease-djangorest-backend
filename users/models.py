@@ -38,7 +38,7 @@ class UserAccountManager(BaseUserManager):
 
 class UserAccount(AbstractBaseUser, PermissionsMixin):
     first_name = models.CharField(max_length=255)
-    last_name = models.CharField(max_length=255)
+    last_name = models.CharField(max_length=255, null=True, blank=True)
     email = models.EmailField(
         max_length=255,
         unique=True,
@@ -49,6 +49,7 @@ class UserAccount(AbstractBaseUser, PermissionsMixin):
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     is_superuser = models.BooleanField(default=False)
+    
 
     # Roles
     Roles = (('artist', 'Artist'), ('client', 'Client'), ('admin', 'Admin'))

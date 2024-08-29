@@ -9,22 +9,23 @@ User = get_user_model()
 
 
 
+class Genre(models.Model):
+    name = models.CharField(max_length=60)
+
+    def __str__(self):
+        return self.name
+
+
 class ArtistApplication(models.Model):
-    status_choices = [
-        ('under_review', 'Under Review'),
-        ('approved','Approved'),
-        ('rejected','Rejected')
-    ]
     sample_video1 = CloudinaryField('sample_video', resource_type='video')
     sample_video2 = CloudinaryField('sample_video',null=True, blank=True)
     sample_video3 = CloudinaryField('sample_video',null=True, blank=True)
 
-
-    #Mirror ArtistProfile Fields
     dob = models.DateField(validators=[date_not_future])
     gender = models.CharField(max_length=20, null=True, blank=True)
     bio = models.TextField(null=True, blank=True)
 
+    genre = models.ManyToManyField(Genre, blank=True)
     # Contacts'
     phone = models.CharField(max_length=20)
 
@@ -34,9 +35,6 @@ class ArtistApplication(models.Model):
     city = models.CharField(max_length=255)  # or town
     country = models.CharField(max_length=255)
     zipcode = models.CharField(max_length=10)
-
-    # Photos
-    # profile_pic = CloudinaryField('profile_pic',null=True, blank=True)
 
     cover_photo = CloudinaryField(
         'cover_photo', null=True, default=None, blank=True)
@@ -49,6 +47,11 @@ class ArtistApplication(models.Model):
     fb_profile_link = models.CharField(max_length=255, null=True, blank=True)
 
 
+    status_choices = [
+        ('under_review', 'Under Review'),
+        ('approved','Approved'),
+        ('rejected','Rejected')
+    ]
 
     status = models.CharField(max_length=50, choices=status_choices, default='under_review')
     user = models.OneToOneField(User, on_delete=models.CASCADE, null=True, blank=True)
@@ -62,17 +65,14 @@ class ArtistApplication(models.Model):
 
 
 class Artist(models.Model):
-    STATUS = [
-        ('active','Active'),
-        ('inactive', 'Inactive')
-    ]
     slug = models.SlugField(max_length=255, blank=True, null=True)
-    status = models.CharField(max_length=10,default='active', choices=STATUS, null=True, blank=True)
-
+    
     dob = models.DateField(blank=True, null=True, validators=[date_not_future])
     gender = models.CharField(max_length=20, null=True, blank=True)
     bio = models.TextField(null=True, blank=True)
 
+
+    genre = models.ManyToManyField(Genre, blank=True)
     # Contacts
     phone = models.CharField(max_length=20, blank=True, null=True)
 
@@ -83,8 +83,6 @@ class Artist(models.Model):
     country = models.CharField(max_length=255, null=True, blank=True)
     zipcode = models.CharField(max_length=10, null=True, blank=True)
 
-    # Photos
-    # profile_pic = CloudinaryField('profile_pic',null=True, blank=True)
     cover_photo = CloudinaryField(
         'cover_photo', null=True, blank=True, default=None)
 
@@ -94,6 +92,12 @@ class Artist(models.Model):
     twitter = models.CharField(max_length=255, null=True, blank=True)
     fb_profile_link = models.CharField(max_length=255, null=True, blank=True)
 
+    STATUS = [
+        ('active','Active'),
+        ('inactive', 'Inactive')
+    ]
+    status = models.CharField(max_length=10,default='active', choices=STATUS, null=True, blank=True)
+
 
 
     #Relationships
@@ -102,37 +106,6 @@ class Artist(models.Model):
 
     def __str__(self):
         return f'Artist-{self.user}'
-    
-# class ArtistProfile(models.Model):
-#     dob = models.DateField(blank=True, null=True, validators=[date_not_future])
-#     gender = models.CharField(max_length=20, null=True, blank=True)
-#     bio = models.TextField(null=True, blank=True)
-
-#     # Contacts
-#     phone = models.CharField(max_length=20, blank=True, null=True)
-
-#     # Address
-#     street = models.CharField(max_length=255, null=True, blank=True)
-#     brgy = models.CharField(max_length=60, null=True, blank=True)
-#     city = models.CharField(max_length=255, null=True, blank=True)  # or town
-#     country = models.CharField(max_length=255, null=True, blank=True)
-#     zipcode = models.CharField(max_length=10, null=True, blank=True)
-
-#     # Photos
-#     profile_image = CloudinaryField(
-#         'profile_image', null=True, default=None, blank=True)
-#     cover_photo = CloudinaryField(
-#         'cover_photo', null=True, blank=True, default=None)
-
-#     # Socials
-#     fb_page = models.CharField(max_length=255, null=True, blank=True)
-#     instagram = models.CharField(max_length=255, null=True, blank=True)
-#     twitter = models.CharField(max_length=255, null=True, blank=True)
-#     fb_profile_link = models.CharField(max_length=255, null=True, blank=True)
-
-
-#     # Relationships
-#     user = models.OneToOneField(User, on_delete=models.CASCADE)
     
 
 

@@ -36,7 +36,11 @@ class ArtistView(APIView):
             return Response(serializer.errors, status = status.HTTP_400_BAD_REQUEST)
     
 
-    def get(self, request,pk=None):
+    def get(self, request,pk=None, slug=None):
+        if slug:
+            artist = get_object_or_404(Artist, slug = slug)
+            serializer = ArtistSerializer(artist)
+            return Response(serializer.data, status = status.HTTP_200_OK)
         if pk:
             artist = get_object_or_404(Artist, id = pk)
             serializer = ArtistSerializer(artist)
