@@ -1,3 +1,4 @@
+from datetime import datetime
 from django.conf import settings
 from djoser.social.views import ProviderAuthView
 from rest_framework_simplejwt.views import (
@@ -8,11 +9,11 @@ from rest_framework_simplejwt.views import (
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .serializers import VerifyProfileSerializer
+from .serializers import VerifyProfileSerializer, ProfileSerializer
 from rest_framework.decorators import api_view, permission_classes
-from .models import UserAccount
+from .models import UserAccount, Profile
 from django.shortcuts import get_object_or_404
-
+import pytz
 
 
 class CustomProviderAuthView(ProviderAuthView):
@@ -114,7 +115,42 @@ class LogoutView(APIView):
         response.delete_cookie('refresh')
 
         return response
+    
+
+class ProfileView(APIView):
+    def put(self, request):
+        try:
+            user = request.user
+            profile = get_object_or_404(Profile, user = user)
+            data = request.data
+            if 'dob' in data:
+                try:
+                    iso_date_str = data['dob']
+                    print(iso_date_str)
+                    date_obj = datetime.fromisoformat(iso_date_str.replace('Z', '+00:00'))
+                    local_tz = pytz.timezone('Asia/Manila')
+                    date_obj_utc = date_obj.astimezone(pytz.UTC)
+                    print(date_obj_utc)
+                    date_obj_local = date_obj_utc.astimezone(local_tz)
+
+                    formatted_date = date_obj.strftime('%Y-%m-%d')
+                    data['dob'] = formatted_date
+                except ValueError:
+                    return Response({'error': 'Invalid date format'}, status=status.HTTP_400_BAD_REQUEST)
+            print(data)
+            serializer = ProfileSerializer(profile, data = request.data, partial=True)
+            if serializer.is_valid(raise_exception=True):
+                serializer.save()
+                profile.is_complete = True
+                profile.save()
+                return Response(status = status.HTTP_204_NO_CONTENT)
+            return Response(status = status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            print(e)
+            return Response({'error'}, status = status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
             
+
 
 class VerifyProfileView(APIView):
 
@@ -143,12 +179,13 @@ def is_artist(request):
     if user.is_artist:
         return Response({}, status=status.HTTP_204_NO_CONTENT)
     return Response({'message':'error'}, status=status.HTTP_400_BAD_REQUEST)
-        
-            
 
 
-# @api_view('GET')
-# def get_profile_pic(request, email):
-#     user = get_object_or_404(UserAccount, email = email)
-#     # if user:
-#     #     user.
+@api_view(['GET'])
+def is_profile_complete(request):
+    user = request.user
+    profile = get_object_or_404(Profile, user = user)
+    if profile.is_complete:
+        return Response(status = status.HTTP_204_NO_CONTENT)
+    return Response(status = status.HTTP_400_BAD_REQUEST)
+       

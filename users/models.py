@@ -43,13 +43,12 @@ class UserAccount(AbstractBaseUser, PermissionsMixin):
         max_length=255,
         unique=True,
     )
-    profile_image = CloudinaryField(
-        'profile_image', null=True, default=None, blank=True)
+
     is_verified = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     is_superuser = models.BooleanField(default=False)
-    
+
 
     # Roles
     Roles = (('artist', 'Artist'), ('client', 'Client'), ('admin', 'Admin'))
@@ -77,7 +76,8 @@ class UserAccount(AbstractBaseUser, PermissionsMixin):
         return self.email
 
 
-class ClientProfile(models.Model):
+class Profile(models.Model):
+    profile_image = models.ImageField(upload_to="images/profiles/", null=True, blank=True)
 
     dob = models.DateField(blank=True, null=True, validators=[date_not_future])
     gender = models.CharField(max_length=20, null=True, blank=True)
@@ -86,11 +86,14 @@ class ClientProfile(models.Model):
     phone = models.CharField(max_length=20, blank=True, null=True)
 
     # Address
-    street = models.CharField(max_length=255, null=True, blank=True)
+    country = models.CharField(max_length=255, default="philippines", null=True, blank=True)
+    province = models.CharField(max_length=255, null=True, blank=True)  
+    municipality = models.CharField(max_length=255, null=True, blank=True)  
     brgy = models.CharField(max_length=60, null=True, blank=True)
-    city = models.CharField(max_length=255, null=True, blank=True)  # or town
-    country = models.CharField(max_length=255, null=True, blank=True)
+    street = models.CharField(max_length=255, null=True, blank=True)
     zipcode = models.CharField(max_length=10, null=True, blank=True)
+
+    is_complete = models.BooleanField(default=False)
 
     # Photos
    
@@ -103,5 +106,5 @@ class ClientProfile(models.Model):
         UserAccount, related_name='profile', on_delete=models.CASCADE, null=True, blank=True)
 
     def __str__(self):
-        return f'{self.user}'
+        return f'P-{self.user}'
 

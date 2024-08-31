@@ -10,35 +10,20 @@ User = get_user_model()
 
 
 class Genre(models.Model):
-    name = models.CharField(max_length=60)
+    name = models.CharField(max_length=60, unique=True)
 
     def __str__(self):
         return self.name
 
 
 class ArtistApplication(models.Model):
-    sample_video1 = CloudinaryField('sample_video', resource_type='video')
-    sample_video2 = CloudinaryField('sample_video',null=True, blank=True)
-    sample_video3 = CloudinaryField('sample_video',null=True, blank=True)
+ 
+    sample_video1 = models.FileField(upload_to="videos/", null=True, blank=True)
+    sample_video2 = models.FileField(upload_to="videos/", null=True, blank=True)
+    sample_video3 = models.FileField(upload_to="videos/", null=True, blank=True)
 
-    dob = models.DateField(validators=[date_not_future])
-    gender = models.CharField(max_length=20, null=True, blank=True)
-    bio = models.TextField(null=True, blank=True)
+    genres = models.ManyToManyField(Genre, blank=True)
 
-    genre = models.ManyToManyField(Genre, blank=True)
-    # Contacts'
-    phone = models.CharField(max_length=20)
-
-    # Address
-    street = models.CharField(max_length=255)
-    brgy = models.CharField(max_length=60)
-    city = models.CharField(max_length=255)  # or town
-    country = models.CharField(max_length=255)
-    zipcode = models.CharField(max_length=10)
-
-    cover_photo = CloudinaryField(
-        'cover_photo', null=True, default=None, blank=True)
-    
 
     # Socials
     fb_page = models.CharField(max_length=255, null=True, blank=True)
@@ -67,24 +52,7 @@ class ArtistApplication(models.Model):
 class Artist(models.Model):
     slug = models.SlugField(max_length=255, blank=True, null=True)
     
-    dob = models.DateField(blank=True, null=True, validators=[date_not_future])
-    gender = models.CharField(max_length=20, null=True, blank=True)
-    bio = models.TextField(null=True, blank=True)
-
-
     genre = models.ManyToManyField(Genre, blank=True)
-    # Contacts
-    phone = models.CharField(max_length=20, blank=True, null=True)
-
-    # Address
-    street = models.CharField(max_length=255, null=True, blank=True)
-    brgy = models.CharField(max_length=60, null=True, blank=True)
-    city = models.CharField(max_length=255, null=True, blank=True)  # or town
-    country = models.CharField(max_length=255, null=True, blank=True)
-    zipcode = models.CharField(max_length=10, null=True, blank=True)
-
-    cover_photo = CloudinaryField(
-        'cover_photo', null=True, blank=True, default=None)
 
     # Socials
     fb_page = models.CharField(max_length=255, null=True, blank=True)

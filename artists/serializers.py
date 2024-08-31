@@ -1,7 +1,7 @@
 
 from rest_framework import serializers
 
-from .models import PortfolioItem, Portfolio, Artist, ArtistApplication
+from .models import PortfolioItem, Portfolio, Artist, ArtistApplication, Genre
 from users.serializers import UserDetailSerializer, UserAccountSerializer
 
 class PortfolioItemSerializer(serializers.ModelSerializer):
@@ -12,7 +12,7 @@ class PortfolioItemSerializer(serializers.ModelSerializer):
         id = validated_data.pop('id', None)
         instance = self.Meta.model(**validated_data)
         if id is not None:
-            instance.id = id # type: ignore
+            instance.id = id 
         instance.save()
         return instance
 
@@ -26,13 +26,18 @@ class PortfolioSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
+class GenreSerializer(serializers.ModelSerializer):
+    class Meta:
+        model= Genre
+        fields = '__all__'
+
 
 
 class ArtistSerializer(serializers.ModelSerializer):
     user = UserAccountSerializer()
     class Meta:
         model = Artist
-        fields = ['dob','gender','bio','brgy','city','country','cover_photo','fb_page','fb_profile_link','id','user','phone','slug','street','twitter','zipcode']
+        fields = '__all__'
 
 
 
@@ -43,7 +48,10 @@ class ArtistDetailSerializer(serializers.ModelSerializer):
 
 
 class ArtistApplicationSerializer(serializers.ModelSerializer):
-    
+    genres = serializers.PrimaryKeyRelatedField(
+        queryset=Genre.objects.all(), 
+        many=True, 
+    )
     class Meta:
         model = ArtistApplication
         fields = '__all__'

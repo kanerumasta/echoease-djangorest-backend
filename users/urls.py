@@ -5,6 +5,8 @@ from .views import (
     LogoutView,
     CustomProviderAuthView,
     VerifyProfileView,
+    ProfileView,
+    is_profile_complete,
     is_artist
 )
 
@@ -19,5 +21,8 @@ urlpatterns = [
     path('jwt/verify/', CustomTokenVerifyView.as_view()),
     path('logout/', LogoutView.as_view()),
     path('account/', VerifyProfileView.as_view()),
-    path('users/me/is-artist',is_artist)
+    path('profile/', ProfileView.as_view()),
+    path('profile/is-complete', is_profile_complete),
+    path('users/me/is-artist',is_artist),
+    
 ]

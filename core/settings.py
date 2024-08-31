@@ -7,9 +7,9 @@ from datetime import timedelta
 
 
 #Cloudinary imports 
-import cloudinary
-import cloudinary.api
-import cloudinary.uploader
+# import cloudinary
+# import cloudinary.api
+# import cloudinary.uploader
 
 
 
@@ -38,7 +38,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'cloudinary',
+    # 'cloudinary',
     'corsheaders',
     'rest_framework',
     'djoser',
@@ -199,13 +199,13 @@ DOMAIN = getenv('DOMAIN', 'localhost:3000')
 DEFAULT_FROM_EMAIL = getenv('DEFAULT_FROM_EMAIL')
 
 #Django - Cloudinary Configuration
-cloudinary.config (
+# cloudinary.config (
 
-    cloud_name = getenv('CLOUDINARY_CLOUD_NAME'),
-    api_secret = getenv('CLOUDINARY_SECRET'),
-    api_key = getenv('CLOUDINARY_KEY')
+#     cloud_name = getenv('CLOUDINARY_CLOUD_NAME'),
+#     api_secret = getenv('CLOUDINARY_SECRET'),
+#     api_key = getenv('CLOUDINARY_KEY')
 
-)
+# )
 
 
 # CHANNEL_LAYERS = {
@@ -222,4 +222,7 @@ CHANNEL_LAYERS = {
         'BACKEND': 'channels.layers.InMemoryChannelLayer',
     },
 }
+
+
+
 

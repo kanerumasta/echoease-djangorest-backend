@@ -23,15 +23,6 @@ class ArtistApplicationAdmin(admin.ModelAdmin):
                 application.save()
                 Artist.objects.create(
                     user = application.user,
-                    dob = application.dob,
-                    gender = application.gender,
-                    phone = application.phone,
-                    bio = application.bio,
-                    street = application.street,
-                    brgy = application.brgy,
-                    city = application.city,
-                    country = application.country,
-                    zipcode = application.zipcode,
                     fb_page = application.fb_page,
                     instagram = application.instagram,
                     twitter = application.twitter,

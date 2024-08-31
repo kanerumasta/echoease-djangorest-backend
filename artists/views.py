@@ -7,7 +7,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.exceptions import ValidationError
-from .models import ArtistApplication, Artist
+from .models import ArtistApplication, Artist, Genre
 from .permissions import IsArtist
 
 
@@ -17,6 +17,7 @@ from .serializers import (
                             PortfolioItemSerializer, 
                             PortfolioSerializer,
                             FollowArtistSerializer,
+                            GenreSerializer
                           )
 from .models import Artist, PortfolioItem, Portfolio
 
@@ -92,15 +93,26 @@ class PortfolioItemView(APIView):
             return Response(serializer.errors, status = status.HTTP_400_BAD_REQUEST)
         
 class ArtistApplicationView(APIView):
+    #FOR ADMIN ONLY
+    def get(self, request):
+        try:
+            applications = ArtistApplication.objects.all()
+            serializer = ArtistApplicationSerializer(applications, many = True)
+            return Response(serializer.data, status = status.HTTP_200_OK)
+        except Exception as e:
+            print(e)
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+
+
     def post(self, request):
         #check user is verified here
         try:
-        
             user = request.user
-            print(request.data)
+            application = ArtistApplication.objects.filter(user = user)
+            if application:
+                return Response({'message':'You already have an artist application.'},status = status.HTTP_409_CONFLICT)
             serializer = ArtistApplicationSerializer(data = request.data)
-            if serializer.is_valid(raise_exception = True):
-                print(serializer.validated_data)
+            if serializer.is_valid():
                 serializer.validated_data['user'] = user
                 serializer.save()
                 return Response({'message':'Your application is in process.'}, status = status.HTTP_201_CREATED)
@@ -108,7 +120,24 @@ class ArtistApplicationView(APIView):
             return Response(serializer.errors, status= status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             print(e)
-            return Response({}, status = status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(status = status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+class GenreView(APIView):
+    def get(self, request, id=None):
+       
+        if id:
+            genre = get_object_or_404(Genre, id = id)
+            serializer = GenreSerializer(genre)
+            return Response(serializer.data, status = status.HTTP_200_OK)
+        
+        try:
+            genres = Genre.objects.all()
+            serializer = GenreSerializer(genres, many=True)
+            return Response(serializer.data, status = status.HTTP_200_OK)
+            
+        except Exception as e:
+            print(e)
+            return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])

@@ -1,5 +1,6 @@
 from rest_framework.serializers import ModelSerializer
-from .models import ClientProfile, UserAccount
+from rest_framework import serializers
+from .models import Profile, UserAccount
 
 class UserAccountSerializer (ModelSerializer):
     class Meta:
@@ -9,13 +10,17 @@ class UserAccountSerializer (ModelSerializer):
 
 class VerifyProfileSerializer(ModelSerializer):
     class Meta:
-        model = ClientProfile
-        fields = ['dob','gender', 'phone','street','brgy', 'city', 'country', 'zipcode']
+        model = Profile
+        fields = ['dob','gender', 'phone','country','province', 'municipality', 'brgy', 'zipcode']
 
 
 class ProfileSerializer(ModelSerializer):
+    dob = serializers.DateField(
+         input_formats=['%Y-%m-%d', '%Y-%m-%dT%H:%M:%S', '%m/%d/%Y', '%d-%m-%Y'],
+         format='%Y-%m-%d'
+    )
     class Meta:
-        model = ClientProfile
+        model = Profile
         fields = '__all__'
 
 class UserDetailSerializer(ModelSerializer):
