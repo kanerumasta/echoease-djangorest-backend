@@ -12,24 +12,32 @@ from .models import (
 
 
 class ArtistApplicationAdmin(admin.ModelAdmin):
-    list_display = ('user', 'status')
+    list_display = ('id','user', 'status','created','updated')
     list_filter = ('status',)
     actions = ['approve_applications', 'reject_applications']
 
     def approve_applications(self, request, queryset):
         for application in queryset:
             if application.status == 'under_review':
-                application.status = 'approved'
-                application.save()
-                Artist.objects.create(
-                    user = application.user,
-                    fb_page = application.fb_page,
-                    instagram = application.instagram,
-                    twitter = application.twitter,
-                    fb_profile_link = application.fb_profile_link,
-                )
-                application.user.role = 'artist'
-                application.user.save()
+
+                try:
+                    artist = Artist.objects.create(
+                        user = application.user,
+                        fb_link = application.fb_link,
+                        instagram = application.instagram,
+                        twitter = application.twitter,
+                    )
+
+                    artist.genres.set(application.genres.all())
+                    
+                    application.status = 'approved'
+                    application.save()
+                    application.user.role = 'artist'
+                    application.user.save()
+                except Exception as e:
+                    print('Failed approving artist application')
+
+
     def reject_applications(self, request, queryset):
         for application in queryset:
             if application.status == 'under_review':
@@ -39,6 +47,27 @@ class ArtistApplicationAdmin(admin.ModelAdmin):
     approve_applications.short_description = 'Approve selected applications'
     reject_applications.short_description = 'Reject selected applications'
 
+class ArtistAdmin(admin.ModelAdmin):
+    list_display = ('id','slug','__str__', 'status',)
+    actions = ['activate', 'deactivate']
+
+    def activate(self, request,queryset):
+        for artist in queryset:
+            artist.status = "active"
+            artist.save()
+
+    def deactivate(self, request,queryset):
+        for artist in queryset:
+            artist.status = "inactive"
+            artist.save()
+
+    activate.short_description = "Activate selected artists"
+    deactivate.short_description = "Deactivate selectted artists"
+
+class GenreAdmin(admin.ModelAdmin):
+    list_display = ['__str__','id']
+    list_display_links = ('id','__str__')
+
 admin.site.register(ArtistApplication, ArtistApplicationAdmin)
-admin.site.register(Artist)
-admin.site.register(Genre)
+admin.site.register(Artist, ArtistAdmin)
+admin.site.register(Genre, GenreAdmin)

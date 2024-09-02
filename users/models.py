@@ -32,6 +32,7 @@ class UserAccountManager(BaseUserManager):
 
         user.is_staff = True
         user.is_superuser = True
+        user.role = "admin"
         user.save(using=self._db)
         return user
 
@@ -54,6 +55,9 @@ class UserAccount(AbstractBaseUser, PermissionsMixin):
     Roles = (('artist', 'Artist'), ('client', 'Client'), ('admin', 'Admin'))
     role = models.CharField(choices=Roles, default='client',
                             max_length=20, null=True, blank=True)
+    
+    joined = models.DateField(auto_now_add=True)
+    modified = models.DateField(auto_now=True)
 
     @property
     def is_artist(self):

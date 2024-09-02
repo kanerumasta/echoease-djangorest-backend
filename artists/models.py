@@ -26,10 +26,14 @@ class ArtistApplication(models.Model):
 
 
     # Socials
-    fb_page = models.CharField(max_length=255, null=True, blank=True)
+    fb_link = models.CharField(max_length=255, null=True, blank=True)
     instagram = models.CharField(max_length=255, null=True, blank=True)
     twitter = models.CharField(max_length=255, null=True, blank=True)
-    fb_profile_link = models.CharField(max_length=255, null=True, blank=True)
+    # fb_profile_link = models.CharField(max_length=255, null=True, blank=True)
+
+
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
 
 
     status_choices = [
@@ -48,17 +52,15 @@ class ArtistApplication(models.Model):
         return f'No user application {self.id}'
     
 
-
 class Artist(models.Model):
     slug = models.SlugField(max_length=255, blank=True, null=True)
     
-    genre = models.ManyToManyField(Genre, blank=True)
+    genres = models.ManyToManyField(Genre, blank=True)
 
     # Socials
-    fb_page = models.CharField(max_length=255, null=True, blank=True)
+    fb_link = models.CharField(max_length=255, null=True, blank=True)
     instagram = models.CharField(max_length=255, null=True, blank=True)
     twitter = models.CharField(max_length=255, null=True, blank=True)
-    fb_profile_link = models.CharField(max_length=255, null=True, blank=True)
 
     STATUS = [
         ('active','Active'),
@@ -71,6 +73,9 @@ class Artist(models.Model):
     #Relationships
     user = models.OneToOneField(User,related_name="artist",on_delete=models.CASCADE, unique=True)
     followers = models.ManyToManyField(User, related_name="artists_followed", blank=True)
+
+    date_approved = models.DateField(null=True, blank=True)
+    time_approved = models.TimeField(null=True, blank=True)
 
     def __str__(self):
         return f'Artist-{self.user}'

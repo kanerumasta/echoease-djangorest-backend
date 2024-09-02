@@ -4,7 +4,13 @@ from .models import (
     Profile
 )
 
-class CustomAdminModel(admin.ModelAdmin):
-    list_display=['pk', '__str__']
+class ProfileAdmin(admin.ModelAdmin):
+    list_display=('pk','__str__','gender','phone','province','municipality','brgy','street','zipcode' )
+    list_display_links = ('pk', '__str__')
 
-admin.site.register([UserAccount, Profile],CustomAdminModel)
+class UserAccountAdmin(admin.ModelAdmin):
+    list_display = ('pk','__str__','first_name', 'last_name','role','joined')
+    list_display_links = ('__str__',)
+
+admin.site.register(Profile,ProfileAdmin)
+admin.site.register(UserAccount, UserAccountAdmin)
