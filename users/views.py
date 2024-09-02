@@ -149,8 +149,20 @@ class ProfileView(APIView):
             print(e)
             return Response({'error'}, status = status.HTTP_500_INTERNAL_SERVER_ERROR)
         
-            
-
+    def patch(self, request):
+        try:
+            user = request.user
+            profile = get_object_or_404(Profile, user = user)
+            data = request.data
+            serializer = ProfileSerializer(profile,data = data, partial = True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(status = status.HTTP_200_OK)
+            return Response(serializer.errors, status = status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            print(e)
+            return Response({'message':'error occured'}, status = status.HTTP_500_INTERNAL_SERVER_ERROR)
+   
 
 class VerifyProfileView(APIView):
 
@@ -188,7 +200,4 @@ def is_profile_complete(request):
     if profile.is_complete:
         return Response(status = status.HTTP_204_NO_CONTENT)
     return Response(status = status.HTTP_400_BAD_REQUEST)
-       
 
-# @api_view('GET')
-# de

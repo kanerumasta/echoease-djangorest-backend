@@ -7,7 +7,7 @@ from .views import (
     VerifyProfileView,
     ProfileView,
     is_profile_complete,
-    is_artist
+    is_artist,
 )
 
 from django.urls import path, re_path
@@ -23,6 +23,7 @@ urlpatterns = [
     path('account/', VerifyProfileView.as_view()),
     path('profile/', ProfileView.as_view()),
     path('profile/is-complete', is_profile_complete),
+    path('profile/change-image',ProfileView.as_view()),
     path('users/me/is-artist',is_artist),
     
 ]

@@ -15,13 +15,10 @@ class VerifyProfileSerializer(ModelSerializer):
 
 
 class ProfileSerializer(ModelSerializer):
-    dob = serializers.DateField(
-         input_formats=['%Y-%m-%d', '%Y-%m-%dT%H:%M:%S', '%m/%d/%Y', '%d-%m-%Y'],
-         format='%Y-%m-%d'
-    )
     class Meta:
         model = Profile
         fields = '__all__'
+
 
 class UserDetailSerializer(ModelSerializer):
     profile = ProfileSerializer(read_only=True)
