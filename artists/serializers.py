@@ -12,11 +12,9 @@ class PortfolioItemSerializer(serializers.ModelSerializer):
         id = validated_data.pop('id', None)
         instance = self.Meta.model(**validated_data)
         if id is not None:
-            instance.id = id 
+            instance.pk = id 
         instance.save()
         return instance
-
-    
 
 
 class PortfolioSerializer(serializers.ModelSerializer):
@@ -55,6 +53,13 @@ class ArtistApplicationSerializer(serializers.ModelSerializer):
     class Meta:
         model = ArtistApplication
         fields = '__all__'
+
+    def create(self, validated_data):
+        user = validated_data.pop('user')
+        genres = validated_data.pop('genres',[])
+        application = ArtistApplication.objects.create(user=user, **validated_data)
+        application.genres.set(genres)
+        return application
 
 class FollowArtistSerializer(serializers.Serializer):
     artist_id = serializers.IntegerField()

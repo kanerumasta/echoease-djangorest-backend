@@ -120,34 +120,18 @@ class LogoutView(APIView):
 class ProfileView(APIView):
     def put(self, request):
         try:
-            user = request.user
-            profile = get_object_or_404(Profile, user = user)
-            data = request.data
-            if 'dob' in data:
-                try:
-                    iso_date_str = data['dob']
-                    print(iso_date_str)
-                    date_obj = datetime.fromisoformat(iso_date_str.replace('Z', '+00:00'))
-                    local_tz = pytz.timezone('Asia/Manila')
-                    date_obj_utc = date_obj.astimezone(pytz.UTC)
-                    print(date_obj_utc)
-                    date_obj_local = date_obj_utc.astimezone(local_tz)
-
-                    formatted_date = date_obj.strftime('%Y-%m-%d')
-                    data['dob'] = formatted_date
-                except ValueError:
-                    return Response({'error': 'Invalid date format'}, status=status.HTTP_400_BAD_REQUEST)
-            print(data)
+            profile = get_object_or_404(Profile, user = request.user)
             serializer = ProfileSerializer(profile, data = request.data, partial=True)
-            if serializer.is_valid(raise_exception=True):
+            if serializer.is_valid():
                 serializer.save()
                 profile.is_complete = True
-                profile.save()
+                profile.save()  
                 return Response(status = status.HTTP_204_NO_CONTENT)
-            return Response(status = status.HTTP_400_BAD_REQUEST)
+            print(serializer.errors)
+            return Response(serializer.errors,status = status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             print(e)
-            return Response({'error'}, status = status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(status = status.HTTP_500_INTERNAL_SERVER_ERROR)
         
     def patch(self, request):
         try:
@@ -160,7 +144,6 @@ class ProfileView(APIView):
                 return Response(status = status.HTTP_200_OK)
             return Response(serializer.errors, status = status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            print(e)
             return Response({'message':'error occured'}, status = status.HTTP_500_INTERNAL_SERVER_ERROR)
    
 
@@ -186,8 +169,6 @@ class VerifyProfileView(APIView):
 @api_view(['GET'])
 def is_artist(request):   
     user = request.user
-    print(user)
-    print(user.is_artist)
     if user.is_artist:
         return Response({}, status=status.HTTP_204_NO_CONTENT)
     return Response({'message':'error'}, status=status.HTTP_400_BAD_REQUEST)

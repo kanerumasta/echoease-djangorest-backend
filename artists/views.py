@@ -108,13 +108,13 @@ class ArtistApplicationView(APIView):
         #check user is verified here
         try:
             user = request.user
+            print(request.data)
             application = ArtistApplication.objects.filter(user = user)
-            if application:
+            if application.exists():
                 return Response({'message':'You already have an artist application.'},status = status.HTTP_409_CONFLICT)
             serializer = ArtistApplicationSerializer(data = request.data)
             if serializer.is_valid():
-                serializer.validated_data['user'] = user
-                serializer.save()
+                serializer.save(user=user)
                 return Response({'message':'Your application is in process.'}, status = status.HTTP_201_CREATED)
             
             return Response(serializer.errors, status= status.HTTP_400_BAD_REQUEST)
