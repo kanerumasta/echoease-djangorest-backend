@@ -49,7 +49,7 @@ class ArtistApplication(models.Model):
     def __str__(self):
         if self.user:
             return f'Application {self.user}'
-        return f'No user application {self.id}'
+        return f'No user application {self.pk}'
     
 
 class Artist(models.Model):
@@ -97,4 +97,4 @@ class PortfolioItem(models.Model):
     file = CloudinaryField('file',resource_type = 'auto',null=True)
 
     def __str__(self):
-        return f'PortfolioItem-{self.portfolio.id}-{self.id}' # type: ignore
+        return f'PortfolioItem-{self.portfolio.pk}-{self.pk}' # type: ignore
