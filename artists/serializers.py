@@ -1,8 +1,7 @@
 
 from rest_framework import serializers
-
+from users.serializers import UserProfileSerializer
 from .models import PortfolioItem, Portfolio, Artist, ArtistApplication, Genre
-from users.serializers import UserDetailSerializer, UserAccountSerializer
 
 class PortfolioItemSerializer(serializers.ModelSerializer):
     class Meta:
@@ -32,17 +31,12 @@ class GenreSerializer(serializers.ModelSerializer):
 
 
 class ArtistSerializer(serializers.ModelSerializer):
-    user = UserAccountSerializer()
+    user = UserProfileSerializer()
     class Meta:
         model = Artist
         fields = '__all__'
 
 
-
-class ArtistDetailSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Artist
-        fields = '__all__'
 
 
 class ArtistApplicationSerializer(serializers.ModelSerializer):
@@ -61,5 +55,3 @@ class ArtistApplicationSerializer(serializers.ModelSerializer):
         application.genres.set(genres)
         return application
 
-class FollowArtistSerializer(serializers.Serializer):
-    artist_id = serializers.IntegerField()

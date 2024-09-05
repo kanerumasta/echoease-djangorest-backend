@@ -85,7 +85,6 @@ class Profile(models.Model):
 
     dob = models.DateField(blank=True, null=True, validators=[date_not_future])
     gender = models.CharField(max_length=20, null=True, blank=True)
-
     # Contacts
     phone = models.CharField(max_length=20, blank=True, null=True)
 
@@ -96,11 +95,8 @@ class Profile(models.Model):
     brgy = models.CharField(max_length=60, null=True, blank=True)
     street = models.CharField(max_length=255, null=True, blank=True)
     zipcode = models.CharField(max_length=10, null=True, blank=True)
-
     is_complete = models.BooleanField(default=False)
 
-    # Photos
-   
 
     # Socials
     fb_page = models.CharField(max_length=255, null=True, blank=True)
@@ -108,6 +104,11 @@ class Profile(models.Model):
     # Relationships
     user = models.OneToOneField(
         UserAccount, related_name='profile', on_delete=models.CASCADE, null=True, blank=True)
+    
+    #new fields
+    nationality = models.CharField(max_length=50, default="filipino")
+    language = models.CharField(max_length=255, null=True, blank=True)
+    
 
     def __str__(self):
         return f'P-{self.user}'

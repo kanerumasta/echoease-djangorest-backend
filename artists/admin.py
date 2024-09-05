@@ -26,6 +26,12 @@ class ArtistApplicationAdmin(admin.ModelAdmin):
                         fb_link = application.fb_link,
                         instagram = application.instagram,
                         twitter = application.twitter,
+                        spotify = application.spotify,
+                        youtube = application.youtube,
+                        idol = application.idol,
+                        years_experience = application.years_experience,
+                        bio = application.bio,
+
                     )
 
                     artist.genres.set(application.genres.all())

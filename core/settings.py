@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'users',
     'artists',
     'chat',
+    'booking',
     
 
     

@@ -16,8 +16,7 @@ from .serializers import (
                             ArtistSerializer ,
                             PortfolioItemSerializer, 
                             PortfolioSerializer,
-                            FollowArtistSerializer,
-                            GenreSerializer
+                            GenreSerializer,
                           )
 from .models import Artist, PortfolioItem, Portfolio
 
@@ -139,55 +138,4 @@ class GenreView(APIView):
             print(e)
             return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def follow_artist(request):
-    user = request.user
-    serializer = FollowArtistSerializer(data = request.data)
 
-    try:
-        if serializer.is_valid(raise_exception=True):
-            artist_id = serializer.validated_data
-            artist = get_object_or_404(Artist, id=serializer.validated_data.get('artist_id')) # type: ignore
-            if artist and user is not AnonymousUser:
-                artist.followers.add(user)
-                return Response(status=status.HTTP_204_NO_CONTENT)
-        
-    except Exception as e:
-        print(e)
-        print('ERROR:failed to follow artist')
-        return Response({'message':'fail to follow artist'}, status= status.HTTP_400_BAD_REQUEST)
-    
-@api_view(['POST'])
-def unfollow_artist(request):
-    user = request.user
-    serializer = FollowArtistSerializer(data = request.data)
-
-    try:
-        if serializer.is_valid(raise_exception=True):
-            artist_id = serializer.validated_data
-            artist = get_object_or_404(Artist, id=serializer.validated_data.get('artist_id')) # type: ignore
-            if artist and user is not AnonymousUser:
-                artist.followers.remove(user)
-                print(artist.followers.count())
-                return Response(status=status.HTTP_204_NO_CONTENT)
-        
-    except Exception as e:
-        print(e)
-        print('ERROR:failed to follow artist')
-        return Response({'message':'fail to follow artist'}, status= status.HTTP_400_BAD_REQUEST)
-
-        
-    
-@api_view(['GET'])
-@permission_classes([IsAuthenticated, IsArtist])
-def get_my_artist_profile(request):
-    try:
-
-        user = request.user
-        artist = get_object_or_404(Artist, id = user.id)
-        serializer = ArtistSerializer(artist)
-        return Response(serializer.data, status = status.HTTP_200_OK)
-    except Exception as e:
-        print(e)
-        return Response({'message ':'unexpected error occured'}, status = status.HTTP_500_INTERNAL_SERVER_ERROR)

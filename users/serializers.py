@@ -5,25 +5,21 @@ from datetime import datetime
 
 class UserAccountSerializer (ModelSerializer):
     class Meta:
+
         model = UserAccount
-        fields = ['first_name', 'last_name', 'email', 'id']
-
-
-class VerifyProfileSerializer(ModelSerializer):
-    class Meta:
-        model = Profile
-        fields = ['dob','gender', 'phone','country','province', 'municipality', 'brgy', 'zipcode']
-
+        fields =  ['id', 'email','first_name','last_name', 'is_verified', 'is_staff', 'is_active', 'role']
 
 class ProfileSerializer(ModelSerializer):
-    dob = serializers.DateField(input_formats=["%m/%d/%Y"])
+    dob = serializers.DateField(input_formats=["%Y-%m-%d"])
     class Meta:
         model = Profile
         fields = '__all__'
 
-class UserDetailSerializer(ModelSerializer):
-    profile = ProfileSerializer(read_only=True)
+
+
+
+class UserProfileSerializer(ModelSerializer):
+    profile = ProfileSerializer()
     class Meta:
         model = UserAccount
-        fields = ['first_name', 'last_name', 'profile']
-    
+        fields =  ['id', 'email','first_name','last_name', 'is_verified', 'is_staff', 'is_active', 'role', 'profile']

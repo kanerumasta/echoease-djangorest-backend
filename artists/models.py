@@ -17,20 +17,15 @@ class Genre(models.Model):
 
 
 class ArtistApplication(models.Model):
+    bio = models.TextField(null=True, blank=True)
  
     sample_video1 = models.FileField(upload_to="videos/", null=True, blank=True)
     sample_video2 = models.FileField(upload_to="videos/", null=True, blank=True)
     sample_video3 = models.FileField(upload_to="videos/", null=True, blank=True)
-
     genres = models.ManyToManyField(Genre, blank=True)
-
-
-    # Socials
     fb_link = models.CharField(max_length=255, null=True, blank=True)
     instagram = models.CharField(max_length=255, null=True, blank=True)
     twitter = models.CharField(max_length=255, null=True, blank=True)
-    # fb_profile_link = models.CharField(max_length=255, null=True, blank=True)
-
 
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
@@ -45,6 +40,16 @@ class ArtistApplication(models.Model):
     status = models.CharField(max_length=50, choices=status_choices, default='under_review')
     user = models.OneToOneField(User, on_delete=models.CASCADE, null=True, blank=True)
 
+    #new
+    idol = models.CharField(max_length=255, null=True, blank=True)
+    years_experience = models.IntegerField(null=True, blank=True)
+    spotify =models.CharField(max_length=255, null=True, blank=True)
+    youtube = models.CharField(max_length=255, null=True, blank=True)
+
+    award_image1 = models.ImageField(upload_to="images/awards", null=True, blank=True)
+    award_image2 = models.ImageField(upload_to="images/awards", null=True, blank=True)
+    award_image3 = models.ImageField(upload_to="images/awards", null=True, blank=True)
+
 
     def __str__(self):
         if self.user:
@@ -53,14 +58,15 @@ class ArtistApplication(models.Model):
     
 
 class Artist(models.Model):
+    bio = models.TextField(null=True, blank=True)
     slug = models.SlugField(max_length=255, blank=True, null=True)
-    
     genres = models.ManyToManyField(Genre, blank=True)
 
     # Socials
     fb_link = models.CharField(max_length=255, null=True, blank=True)
     instagram = models.CharField(max_length=255, null=True, blank=True)
     twitter = models.CharField(max_length=255, null=True, blank=True)
+
 
     STATUS = [
         ('active','Active'),
@@ -76,6 +82,17 @@ class Artist(models.Model):
 
     date_approved = models.DateField(null=True, blank=True)
     time_approved = models.TimeField(null=True, blank=True)
+
+    #new fields
+    spotify =models.CharField(max_length=255, null=True, blank=True)
+    youtube = models.CharField(max_length=255, null=True, blank=True)
+    idol = models.CharField(max_length=255, null=True, blank=True)
+    years_experience = models.IntegerField(null=True, blank=True)
+    award_image1 = models.ImageField(upload_to="images/awards", null=True, blank=True)
+    award_image2 = models.ImageField(upload_to="images/awards", null=True, blank=True)
+    award_image3 = models.ImageField(upload_to="images/awards", null=True, blank=True)
+
+
 
     def __str__(self):
         return f'Artist-{self.user}'

@@ -9,7 +9,7 @@ from rest_framework_simplejwt.views import (
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .serializers import VerifyProfileSerializer, ProfileSerializer
+from .serializers import  ProfileSerializer, UserAccountSerializer
 from rest_framework.decorators import api_view, permission_classes
 from .models import UserAccount, Profile
 from django.shortcuts import get_object_or_404
@@ -45,8 +45,6 @@ class CustomProviderAuthView(ProviderAuthView):
                 )
 
         return response
-
-
 class CustomTokenObtainPairView(TokenObtainPairView):
     def post(self, request, *args, **kwargs):
         response = super().post(request, *args, **kwargs)
@@ -74,9 +72,7 @@ class CustomTokenObtainPairView(TokenObtainPairView):
                 
                 )
 
-        return response
-
-        
+        return response   
 class CustomTokenRefreshView(TokenRefreshView):
     def post(self, request, *args,**kwargs ):
         refresh_token = request.COOKIES.get('refresh')
@@ -96,8 +92,6 @@ class CustomTokenRefreshView(TokenRefreshView):
                 
                 )
         return response
-
-
 class CustomTokenVerifyView(TokenVerifyView):
     def post(self, request, *args, **kwargs):
         access_token = request.COOKIES.get('access')
@@ -106,8 +100,6 @@ class CustomTokenVerifyView(TokenVerifyView):
             request.data['token'] = access_token # type: ignore
 
         return super().post(request, *args, **kwargs)
-
-
 class LogoutView(APIView):
     def post(self, request):
         response = Response(status=status.HTTP_204_NO_CONTENT)
@@ -116,8 +108,19 @@ class LogoutView(APIView):
 
         return response
     
-
 class ProfileView(APIView):
+    def get(self,request, pk = None):
+        if pk:
+            user = get_object_or_404(UserAccount, pk = pk)
+            profile = get_object_or_404(Profile,user = user)
+            serializer = ProfileSerializer(profile)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        profile = get_object_or_404(Profile,user = request.user)
+        serializer = ProfileSerializer(profile)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+        
+
+
     def put(self, request):
         try:
             profile = get_object_or_404(Profile, user = request.user)
@@ -146,39 +149,22 @@ class ProfileView(APIView):
         except Exception as e:
             return Response({'message':'error occured'}, status = status.HTTP_500_INTERNAL_SERVER_ERROR)
    
-
-class VerifyProfileView(APIView):
-
-    def put(self, request):
-        user = request.user
+class UserView(APIView):
+    def get(self, request):
         try:
-            profile = user.profile
-            serializer = VerifyProfileSerializer(profile,data = request.data)
-        except:
-            return Response({'detail':'Profile not found'}, status = status.HTTP_404_NOT_FOUND)
+            user = UserAccount.objects.get(pk = request.user.id)
+            print('User',user)
+            serializer = UserAccountSerializer(user)
+            return Response(serializer.data, status = status.HTTP_200_OK)
+        except Exception as e:
+            print(e)
+            return Response({'message':'unexpected error'}, status = status.HTTP_400_BAD_REQUEST)
         
-        if serializer.is_valid():
-            serializer.save()
-            user.is_verified = True
-            user.save()
-            return Response({},status = status.HTTP_204_NO_CONTENT)
-        else:
-            return Response(serializer.errors, status = status.HTTP_400_BAD_REQUEST)
-        
+
 
 @api_view(['GET'])
-def is_artist(request):   
+def is_artist(request):
     user = request.user
     if user.is_artist:
-        return Response({}, status=status.HTTP_204_NO_CONTENT)
-    return Response({'message':'error'}, status=status.HTTP_400_BAD_REQUEST)
-
-
-@api_view(['GET'])
-def is_profile_complete(request):
-    user = request.user
-    profile = get_object_or_404(Profile, user = user)
-    if profile.is_complete:
-        return Response(status = status.HTTP_204_NO_CONTENT)
+        return Response(status=status.HTTP_200_OK)
     return Response(status = status.HTTP_400_BAD_REQUEST)
-
