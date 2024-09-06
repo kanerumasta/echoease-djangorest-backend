@@ -1,3 +1,4 @@
+import time
 import requests
 import json
 from os import getenv
@@ -7,7 +8,6 @@ def make_paypal_payment(amount, currency, return_url, cancel_url):
     client_id = getenv("PAYPAL_CLIENT_ID")
     secret = getenv("PAYPAL_SECRET")
     url =getenv("PAYPAL_BASE_URL")
-    print(client_id)
     # Set up API endpoints
     base_url = url
     token_url = base_url + '/v1/oauth2/token'
@@ -17,12 +17,10 @@ def make_paypal_payment(amount, currency, return_url, cancel_url):
     token_payload = {'grant_type': 'client_credentials'}
     token_headers = {'Accept': 'application/json', 'Accept-Language': 'en_US'}
     token_response = requests.post(token_url, auth=(client_id, secret), data=token_payload, headers=token_headers)
-
     if token_response.status_code != 200:
         return False,"Failed to authenticate with PayPal API",None
 
     access_token = token_response.json()['access_token']
-
     # Create payment payload
     payment_payload = {
         'intent': 'sale',
@@ -39,8 +37,6 @@ def make_paypal_payment(amount, currency, return_url, cancel_url):
         'application_context':{
             
             'shipping_preference': 'NO_SHIPPING',
-            'brand_name': 'Camp Session',
-            'description': 'Summer Camp'
         }
     }
 
@@ -51,7 +47,6 @@ def make_paypal_payment(amount, currency, return_url, cancel_url):
     }
 
     payment_response = requests.post(payment_url, data=json.dumps(payment_payload), headers=payment_headers)
-    print(payment_response.text)
     if payment_response.status_code != 201:
         return False , 'Failed to create PayPal payment.',None
 
@@ -59,55 +54,7 @@ def make_paypal_payment(amount, currency, return_url, cancel_url):
     approval_url = next(link['href'] for link in payment_response.json()['links'] if link['rel'] == 'approval_url')
 
     return True,payment_id, approval_url
-
-def verify_paypal_payment(payment_id):
-    # Set up PayPal API credentials
-    client_id = getenv("PAYPAL_CLIENT_ID")
-    secret = getenv("PAYPAL_SECRET")
-    url =getenv("PAYPAL_BASE_URL")
-
-    # Set up API endpoints
-    base_url = url
-    token_url = base_url + '/v1/oauth2/token'
-    payment_url = base_url + '/v1/payments/payment'
-
-    # Request an access token
-    token_payload = {'grant_type': 'client_credentials'}
-    token_headers = {'Accept': 'application/json', 'Accept-Language': 'en_US'}
-    token_response = requests.post(token_url, auth=(client_id, secret), data=token_payload, headers=token_headers)
-
-    if token_response.status_code != 200:
-        raise Exception('Failed to authenticate with PayPal API.')
-
-    access_token = token_response.json()['access_token']
-    print('access_otken',access_token)
-
-    # Retrieve payment details
-    payment_headers = {
-        'Content-Type': 'application/json',
-        'Authorization': f'Bearer {access_token}'
-    }
-
-    payment_details_url = f'{payment_url}/{payment_id}'
-    payment_details_response = requests.get(payment_details_url, headers=payment_headers)
-    print('paymentDetails',payment_details_response.status_code)
-
-    if payment_details_response.status_code != 200:
-        raise Exception('Failed to retrieve PayPal payment details.')
-
-    payment_status = payment_details_response.json()['state']
-    print('payment_status', payment_status)
-    if payment_status == 'created':
-        # Payment is successful, process the order
-        # Retrieve additional payment details if needed
-        payer_email = payment_details_response.json()['payer']['payer_info']['email']
-        print(payer_email)
-        # ... process the order ...
-        return True
-    else:
-        # Payment failed or was canceled
-        return False
-    
+   
 
 def execute_paypal_payment(payment_id, payer_id):
     # Set up PayPal API credentials
@@ -145,3 +92,54 @@ def execute_paypal_payment(payment_id, payer_id):
         return True
     else:
         return False
+
+def send_paypal_payout(amount, recipient_email, currency="USD", note="Payout note"):
+    # Set up PayPal API credentials
+    client_id = getenv("PAYPAL_CLIENT_ID")
+    secret = getenv("PAYPAL_SECRET")
+    base_url = getenv("PAYPAL_BASE_URL")
+
+    # Get an access token
+    token_url = f"{base_url}/v1/oauth2/token"
+    token_payload = {'grant_type': 'client_credentials'}
+    token_headers = {'Accept': 'application/json', 'Accept-Language': 'en_US'}
+    
+    token_response = requests.post(token_url, auth=(client_id, secret), data=token_payload, headers=token_headers)
+    if token_response.status_code != 200:
+        return False, "Failed to authenticate with PayPal API"
+
+    access_token = token_response.json()['access_token']
+
+    # Create Payouts payload
+    payout_payload = {
+        "sender_batch_header": {
+            "sender_batch_id": "batch_" + str(int(time.time())),  # Unique batch ID
+            "email_subject": "You have a payout!",
+            "email_message": "You have received a payout from Echoease!"
+        },
+        "items": [{
+            "recipient_type": "EMAIL",
+            "amount": {
+                "value": str(amount),
+                "currency": currency
+            },
+            "receiver": recipient_email,
+            "note": note,
+            "sender_item_id": "item_1"  # Unique item ID
+        }]
+    }
+
+    payout_url = f"{base_url}/v1/payments/payouts"
+    payout_headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {access_token}"
+    }
+
+    # Send the payout request
+    payout_response = requests.post(payout_url, data=json.dumps(payout_payload), headers=payout_headers)
+
+    if payout_response.status_code != 201:
+        return False, payout_response.json()
+
+    return True, payout_response.json()
+
