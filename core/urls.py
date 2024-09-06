@@ -13,7 +13,7 @@ urlpatterns = [
     path('api/chat/', include('chat.urls')),
     path('api/bookings/', include('booking.urls')),
     path('api/paypal/', include('payment.urls')),
-    
+ 
     
 ]
 
