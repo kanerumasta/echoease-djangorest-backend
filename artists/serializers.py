@@ -1,7 +1,7 @@
 
 from rest_framework import serializers
 from users.serializers import UserProfileSerializer
-from .models import PortfolioItem, Portfolio, Artist, ArtistApplication, Genre
+from .models import PortfolioItem, Portfolio, Artist, ArtistApplication, Genre, IDType
 
 class PortfolioItemSerializer(serializers.ModelSerializer):
     class Meta:
@@ -32,6 +32,7 @@ class GenreSerializer(serializers.ModelSerializer):
 
 class ArtistSerializer(serializers.ModelSerializer):
     user = UserProfileSerializer()
+    genres = GenreSerializer(many=True)
     class Meta:
         model = Artist
         fields = '__all__'
@@ -55,3 +56,7 @@ class ArtistApplicationSerializer(serializers.ModelSerializer):
         application.genres.set(genres)
         return application
 
+class IDTypeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = IDType
+        fields = '__all__'

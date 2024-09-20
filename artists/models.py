@@ -4,11 +4,17 @@ from cloudinary.models import CloudinaryField
 from django.utils.text import slugify
 from django.contrib.auth import get_user_model
 from .validators import date_not_future
+from decimal import Decimal
 
 User = get_user_model()
 
 
+class IDType(models.Model):
+    name = models.CharField(max_length=50, unique=True)
 
+    def __str__(self):
+        return self.name
+    
 class Genre(models.Model):
     name = models.CharField(max_length=60, unique=True)
 
@@ -49,6 +55,11 @@ class ArtistApplication(models.Model):
     award_image1 = models.ImageField(upload_to="images/awards", null=True, blank=True)
     award_image2 = models.ImageField(upload_to="images/awards", null=True, blank=True)
     award_image3 = models.ImageField(upload_to="images/awards", null=True, blank=True)
+    id_type = models.ForeignKey(IDType, on_delete=models.SET_NULL, null=True, blank=True)
+    front_id = models.ImageField(upload_to="images/", null=True, blank=True)
+    back_id = models.ImageField(upload_to="images/", null=True, blank=True)
+
+    rate = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
 
 
     def __str__(self):
@@ -66,6 +77,7 @@ class Artist(models.Model):
     fb_link = models.CharField(max_length=255, null=True, blank=True)
     instagram = models.CharField(max_length=255, null=True, blank=True)
     twitter = models.CharField(max_length=255, null=True, blank=True)
+    rate = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
 
 
     STATUS = [
@@ -93,7 +105,6 @@ class Artist(models.Model):
     award_image3 = models.ImageField(upload_to="images/awards", null=True, blank=True)
 
 
-
     def __str__(self):
         return f'Artist-{self.user}'
     
@@ -107,11 +118,29 @@ class Portfolio(models.Model):
     
 
 class PortfolioItem(models.Model):
+
+    GROUPS = [
+        ('portfolio','Portfolio'),
+        ('event','Event'),
+    ]
+
+    
     portfolio = models.ForeignKey(Portfolio, on_delete=models.CASCADE, related_name="items", null=True)
     title = models.CharField(max_length = 255, null=True, blank=True)
     description = models.CharField(max_length = 255, null=True, blank=True)
-    file_type = models.CharField(max_length=50, null=True, blank=True)
-    file = CloudinaryField('file',resource_type = 'auto',null=True)
+    group = models.CharField(max_length=50,default="portfolio",choices=GROUPS,null=True, blank=True)
+
+    #LIMIT TWO VIDEOS AND 5 IMAGES
+    video1 = models.FileField(upload_to="videos/",null=True, blank=True),
+    video2 = models.FileField(upload_to="videos/",null=True, blank=True),
+
+    image1 = models.ImageField(upload_to="images/", null=True, blank=True)
+    image2 = models.ImageField(upload_to="images/", null=True, blank=True)
+    image3 = models.ImageField(upload_to="images/", null=True, blank=True)
+    image4 = models.ImageField(upload_to="images/", null=True, blank=True)
+    image5 = models.ImageField(upload_to="images/", null=True, blank=True)
+
+
 
     def __str__(self):
         return f'PortfolioItem-{self.portfolio.pk}-{self.pk}' # type: ignore

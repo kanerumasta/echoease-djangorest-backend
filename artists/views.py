@@ -1,13 +1,13 @@
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, get_list_or_404
 from django.contrib.auth.models import AnonymousUser
 
 from rest_framework.views import APIView
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from rest_framework.permissions import IsAuthenticated, IsAdminUser,AllowAny
 from rest_framework.exceptions import ValidationError
-from .models import ArtistApplication, Artist, Genre
+from .models import ArtistApplication, Artist, Genre, IDType
 from .permissions import IsArtist
 
 
@@ -17,12 +17,20 @@ from .serializers import (
                             PortfolioItemSerializer, 
                             PortfolioSerializer,
                             GenreSerializer,
+                            IDTypeSerializer
                           )
 from .models import Artist, PortfolioItem, Portfolio
 
 
 class ArtistView(APIView):
-    permission_classes = [IsAuthenticated] #ADD ISVERIFIED USER HERE
+     #ADD ISVERIFIED USER HERE
+
+    def get_permissions(self):
+        print(self.request.method)
+        if self.request.method == 'GET':
+            return [AllowAny()]
+        return super().get_permissions()
+
     def post(self, request):
         data = request.data
         serializer = ArtistApplicationSerializer(data = data)
@@ -37,6 +45,12 @@ class ArtistView(APIView):
     
 
     def get(self, request,pk=None, slug=None):
+        current = request.GET.get('current', 'False').lower() == 'true'
+        if current:
+            user = request.user
+            artist = get_object_or_404(Artist, user = user)
+            serializer = ArtistSerializer(artist)
+            return Response(serializer.data, status=status.HTTP_200_OK)
         if slug:
             artist = get_object_or_404(Artist, slug = slug)
             serializer = ArtistSerializer(artist)
@@ -139,3 +153,30 @@ class GenreView(APIView):
             return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+class IDTypesView(APIView):
+    def get(self, request, pk=None):
+        if pk:
+            id_type = get_object_or_404(IDType, pk=pk)
+            serializer = IDTypeSerializer(id_type)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        accepted_ids = get_list_or_404(IDType)
+        serializer = IDTypeSerializer(accepted_ids, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+@api_view(['POST'])
+def follow(request):
+    user = request.user
+    artist = get_object_or_404(Artist, pk=request.data.get("artist"))
+    if user not in artist.followers.all():
+        artist.followers.add(user)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    return Response(status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['POST'])
+def unfollow(request):
+    user = request.user
+    artist = get_object_or_404(Artist, pk=request.data.get("artist"))
+    if user in artist.followers.all():
+        artist.followers.remove(user)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    return Response(status=status.HTTP_400_BAD_REQUEST)

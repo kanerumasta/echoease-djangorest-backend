@@ -10,10 +10,11 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from .serializers import  ProfileSerializer, UserAccountSerializer
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from .models import UserAccount, Profile
 from django.shortcuts import get_object_or_404
 import pytz
+from rest_framework.permissions import AllowAny
 
 
 class CustomProviderAuthView(ProviderAuthView):
@@ -168,3 +169,13 @@ def is_artist(request):
     if user.is_artist:
         return Response(status=status.HTTP_200_OK)
     return Response(status = status.HTTP_400_BAD_REQUEST)
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+@authentication_classes([])
+def check_email(request, email):
+    user = get_object_or_404(UserAccount, email = email)
+    if user:
+        return Response({'exists':True}, status=status.HTTP_200_OK)
+    return Response({'exists':False},status=status.HTTP_200_OK)
+    

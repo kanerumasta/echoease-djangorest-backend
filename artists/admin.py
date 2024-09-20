@@ -7,7 +7,8 @@ from .models import (
     Portfolio,
     PortfolioItem,
     Artist,
-    Genre
+    Genre,
+    IDType
 )
 
 
@@ -31,6 +32,8 @@ class ArtistApplicationAdmin(admin.ModelAdmin):
                         idol = application.idol,
                         years_experience = application.years_experience,
                         bio = application.bio,
+                        rate = application.rate
+                       
 
                     )
 
@@ -41,6 +44,7 @@ class ArtistApplicationAdmin(admin.ModelAdmin):
                     application.user.role = 'artist'
                     application.user.save()
                 except Exception as e:
+                    print(e)
                     print('Failed approving artist application')
 
 
@@ -77,3 +81,6 @@ class GenreAdmin(admin.ModelAdmin):
 admin.site.register(ArtistApplication, ArtistApplicationAdmin)
 admin.site.register(Artist, ArtistAdmin)
 admin.site.register(Genre, GenreAdmin)
+admin.site.register(Portfolio)
+admin.site.register(PortfolioItem)
+admin.site.register(IDType)

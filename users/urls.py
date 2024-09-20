@@ -6,7 +6,8 @@ from .views import (
     CustomProviderAuthView,
     ProfileView,
     UserView,
-    is_artist
+    is_artist,
+    check_email
 )
 
 from django.urls import path, re_path
@@ -27,5 +28,7 @@ urlpatterns = [
     path('profile/change-image',ProfileView.as_view()),
     path('whoami/', UserView.as_view()),
     path('is-artist/',is_artist),
+    path('check-email/<str:email>',check_email ),
+
     
 ]

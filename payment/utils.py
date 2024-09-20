@@ -2,144 +2,176 @@ import time
 import requests
 import json
 from os import getenv
+from pydantic import BaseModel, ValidationError
+from typing import Optional
 
-def make_paypal_payment(amount, currency, return_url, cancel_url):
-    # Set up PayPal API credentials
-    client_id = getenv("PAYPAL_CLIENT_ID")
-    secret = getenv("PAYPAL_SECRET")
-    url =getenv("PAYPAL_BASE_URL")
-    # Set up API endpoints
-    base_url = url
-    token_url = base_url + '/v1/oauth2/token'
-    payment_url = base_url + '/v1/payments/payment'
 
-    # Request an access token
-    token_payload = {'grant_type': 'client_credentials'}
-    token_headers = {'Accept': 'application/json', 'Accept-Language': 'en_US'}
-    token_response = requests.post(token_url, auth=(client_id, secret), data=token_payload, headers=token_headers)
-    if token_response.status_code != 200:
-        return False,"Failed to authenticate with PayPal API",None
+class PaypalAccessTokenResult(BaseModel):
+    data:Optional[str]
+    error : Optional[str]
 
-    access_token = token_response.json()['access_token']
-    # Create payment payload
-    payment_payload = {
-        'intent': 'sale',
-        'payer': {'payment_method': 'paypal'},
-        'transactions': [{
-            'amount': {'total': str(amount), 'currency': currency},
-            # 'description': 'Echoease Pay',
-            
-        }],
-        'redirect_urls': {
-            'return_url': return_url,
-            'cancel_url': cancel_url
-        },
-        'application_context':{
-            
-            'shipping_preference': 'NO_SHIPPING',
-        }
-    }
+class PaypalEndpoints(BaseModel):
+    client_id:str
+    secret : str
+    base_url : str
 
-    # Create payment request
-    payment_headers = {
-        'Content-Type': 'application/json',
-        'Authorization': f'Bearer {access_token}'
-    }
+class Result (BaseModel):
+    success : bool
+    error : Optional[str] = None
+    data:Optional[str] = None
 
-    payment_response = requests.post(payment_url, data=json.dumps(payment_payload), headers=payment_headers)
-    if payment_response.status_code != 201:
-        return False , 'Failed to create PayPal payment.',None
+class AuthorizationData(BaseModel):
+    authorization_id : str 
+    amount : str
+class AuthorizationResult(BaseModel):
+    success:bool
+    error:Optional["str"] = None
+    data : Optional[AuthorizationData] = None
 
-    payment_id = payment_response.json()['id']
-    approval_url = next(link['href'] for link in payment_response.json()['links'] if link['rel'] == 'approval_url')
+class PaypalPaymentResult(BaseModel):
+    success : bool
+    payment_id:Optional[str] = None
+    approval_url :Optional[str] = None
+    error : Optional[str] = None
 
-    return True,payment_id, approval_url
-   
+class CreateOrderResult(BaseModel):
+    success:bool
+    order_id:Optional[str] = None
+    error:Optional[str] = None
+    payer_action_link : Optional[str] = None
 
-def execute_paypal_payment(payment_id, payer_id):
-    # Set up PayPal API credentials
-    client_id = getenv("PAYPAL_CLIENT_ID")
-    secret = getenv("PAYPAL_SECRET")
-    url = getenv("PAYPAL_BASE_URL")
+class CapturePaymentResult (BaseModel):
+    capture_id : Optional[str] = None
+    success:bool
+    booking_id: Optional[str] = None
+    gross_amount : Optional[str] = None
+    net_amount : Optional[str] = None
+    paypal_fee:Optional[str] = None
 
-    # Set up API endpoints
-    execute_url = f'{url}/v1/payments/payment/{payment_id}/execute'
 
-    # Request an access token
-    token_payload = {'grant_type': 'client_credentials'}
-    token_headers = {'Accept': 'application/json', 'Accept-Language': 'en_US'}
-    token_response = requests.post(
-        f'{url}/v1/oauth2/token',
-        auth=(client_id, secret),
-        data=token_payload,
-        headers=token_headers
-    )
 
-    if token_response.status_code != 200:
-        raise Exception('Failed to authenticate with PayPal API.')
 
-    access_token = token_response.json()['access_token']
 
-    # Execute the payment
-    execute_payload = {'payer_id': payer_id}
-    execute_headers = {
-        'Content-Type': 'application/json',
-        'Authorization': f'Bearer {access_token}'
-    }
-    execute_response = requests.post(execute_url, json=execute_payload, headers=execute_headers)
+def get_paypal_endpoints() -> PaypalEndpoints:
+    client_id = getenv('PAYPAL_CLIENT_ID')
+    secret = getenv('PAYPAL_SECRET')
+    base_url = getenv('PAYPAL_BASE_URL')
 
-    if execute_response.status_code == 200:
-        return True
-    else:
-        return False
+    return PaypalEndpoints(client_id=client_id, secret=secret, base_url=base_url) # type: ignore
+    
 
-def send_paypal_payout(amount, recipient_email, currency="USD", note="Payout note"):
-    # Set up PayPal API credentials
-    client_id = getenv("PAYPAL_CLIENT_ID")
-    secret = getenv("PAYPAL_SECRET")
-    base_url = getenv("PAYPAL_BASE_URL")
 
-    # Get an access token
-    token_url = f"{base_url}/v1/oauth2/token"
+
+def get_access_token()->PaypalAccessTokenResult:
+    paypal_endpoints = get_paypal_endpoints()
+
+    if not all([paypal_endpoints.client_id, paypal_endpoints.secret, paypal_endpoints.base_url]):
+        raise ValueError("Missing Paypal Endpoints (client_id,secret, base_url)")
+
+    token_url = f'{paypal_endpoints.base_url}/v1/oauth2/token'
     token_payload = {'grant_type': 'client_credentials'}
     token_headers = {'Accept': 'application/json', 'Accept-Language': 'en_US'}
     
-    token_response = requests.post(token_url, auth=(client_id, secret), data=token_payload, headers=token_headers)
+    token_response = requests.post(token_url, auth=(paypal_endpoints.client_id, paypal_endpoints.secret), data=token_payload, headers=token_headers)
+    
     if token_response.status_code != 200:
-        return False, "Failed to authenticate with PayPal API"
+        return PaypalAccessTokenResult(data=None, error="Failed to Authenticate with paypal API")
+    access_token = token_response.json().get('access_token')
+    return PaypalAccessTokenResult(data=access_token, error = None)
 
-    access_token = token_response.json()['access_token']
 
-    # Create Payouts payload
-    payout_payload = {
-        "sender_batch_header": {
-            "sender_batch_id": "batch_" + str(int(time.time())),  # Unique batch ID
-            "email_subject": "You have a payout!",
-            "email_message": "You have received a payout from Echoease!"
-        },
-        "items": [{
-            "recipient_type": "EMAIL",
+
+
+def create_paypal_order(booking_id,amount, currency_code, return_url, cancel_url)->CreateOrderResult:
+
+    endpoints= get_paypal_endpoints()
+    token_result = get_access_token()
+
+    if not token_result.data:
+        return CreateOrderResult(success=False, error=token_result.error)
+    
+    
+
+    order_payload ={ 
+        "intent": "CAPTURE",
+        "purchase_units": [
+            {
+            "reference_id":booking_id,
             "amount": {
-                "value": str(amount),
-                "currency": currency
-            },
-            "receiver": recipient_email,
-            "note": note,
-            "sender_item_id": "item_1"  # Unique item ID
-        }]
+                "currency_code": currency_code,
+                "value": str(amount)
+            }
+            }
+        ],
+        "payment_source": {
+            "paypal": {
+            "experience_context": {
+                "payment_method_preference": "IMMEDIATE_PAYMENT_REQUIRED",
+                "brand_name": "Echoease",
+                "locale": "en-US",
+                "landing_page": "LOGIN",
+                "shipping_preference": "NO_SHIPPING",
+                "user_action": "PAY_NOW",
+                "return_url": return_url,
+                "cancel_url": cancel_url
+            }
+            }
+        }
+    }
+    
+    order_url = f'{endpoints.base_url}/v2/checkout/orders'
+    order_headers = {
+        'Content-Type': 'application/json',
+        'Authorization': f'Bearer {token_result.data}'
     }
 
-    payout_url = f"{base_url}/v1/payments/payouts"
-    payout_headers = {
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {access_token}"
-    }
+    # Create payment request
+    order_response = requests.post(order_url, data=json.dumps(order_payload), headers=order_headers)
+  
+    if order_response.status_code != 200:
+        return CreateOrderResult(success=False, error='Failed to create PayPal payment.', order_id=None)
 
-    # Send the payout request
-    payout_response = requests.post(payout_url, data=json.dumps(payout_payload), headers=payout_headers)
+    order_id = order_response.json().get('id')
 
-    if payout_response.status_code != 201:
-        return False, payout_response.json()
+    payer_action_link = next(link['href'] for link in order_response.json()['links'] if link['rel'] == 'payer-action')
+    return CreateOrderResult(success=True, order_id=order_id, error=str(order_response.status_code), payer_action_link=payer_action_link)
 
-    return True, payout_response.json()
+def capture_payment(order_id):
+    
+    token =get_access_token()
+    paypal_endpoints = get_paypal_endpoints()
+    base_url = paypal_endpoints.base_url
+
+    if not token.data:
+        return CapturePaymentResult(success=False)
+    if not base_url:
+        return CapturePaymentResult(success=False)
+
+    #capture
+    capture_url = f'{base_url}/v2/checkout/orders/{order_id}/capture'
+    capture_headers = {
+        'Content-Type':'application/json',
+        'Authorization':f'Bearer {token.data}'
+    }   
+
+    capture_response = requests.post(url=capture_url, headers=capture_headers)
+
+    if capture_response.status_code != 201:
+        return CapturePaymentResult(success=False)
+
+    capture = capture_response.json()['purchase_units'][0]['payments']['captures'][0]
+    capture_id = capture['id']
+    capture_amount = capture['amount']['value']
+    net_amount = capture['seller_receivable_breakdown']['net_amount']['value']
+    paypal_fee = capture['seller_receivable_breakdown']['paypal_fee']['value']
+
+    print('capture id', capture_id)
+    print('amount', capture_amount)
+
+    print('net', net_amount)
+    print('fee', paypal_fee)
+
+    booking_reference_id = capture_response.json()['purchase_units'][0]['reference_id']
+
+    return CapturePaymentResult(success=True,booking_id=booking_reference_id, paypal_fee=paypal_fee, capture_id=capture_id,net_amount=net_amount,gross_amount=capture_amount)
 
