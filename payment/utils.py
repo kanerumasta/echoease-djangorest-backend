@@ -4,6 +4,7 @@ import json
 from os import getenv
 from pydantic import BaseModel, ValidationError
 from typing import Optional
+import base64
 
 
 class PaypalAccessTokenResult(BaseModel):
@@ -175,3 +176,22 @@ def capture_payment(order_id):
 
     return CapturePaymentResult(success=True,booking_id=booking_reference_id, paypal_fee=paypal_fee, capture_id=capture_id,net_amount=net_amount,gross_amount=capture_amount)
 
+
+def get_base64_key(secret_key):
+    key_with_colon = f'{secret_key}:'
+    return base64.b64encode(key_with_colon.encode()).decode()
+
+
+def create_paymongo_payment_link(amount):
+    url = "https://api.paymongo.com/v1/links"
+
+    auth_key = get_base64_key("sk_test_1X9wP8JRD8Dhoc5GZga1m2gj") #ENV THIS
+
+    headers = {'accept':'application/json','content-type':'application/json', 'authorization':f'Basic {auth_key}'}
+    payload = { "data": { "attributes": {
+            "amount": amount * 100,
+            "description": "sdoifu",
+            "remarks": "34"
+        } } }
+    res = requests.post(url=url, json=payload, headers=headers)
+    return True,res.json()['data']['attributes']['checkout_url']

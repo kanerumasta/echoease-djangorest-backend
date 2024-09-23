@@ -3,6 +3,7 @@ from artists.models import Artist
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from decimal import Decimal
+from artists.models  import Rate
 
 
 User = get_user_model()
@@ -16,15 +17,17 @@ class Booking(models.Model):
     event_name = models.CharField(max_length=100)
     event_date = models.DateField()
     event_time = models.TimeField()
-    duration_in_hours = models.IntegerField(null=True, blank=True)
-    duration_in_minutes = models.IntegerField(null=True, blank=True)
-    event_location = models.CharField(max_length=255)
-
     created_at = models.DateField(auto_now_add=True)
     updated_at = models.DateField(auto_now=True)
     is_completed = models.BooleanField(default=False)
 
-    amount = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
+    rate = models.ForeignKey(Rate, on_delete=models.CASCADE, null=True, blank=True)
+
+    province = models.CharField(max_length=255, null=True, blank=True)
+    municipality = models.CharField(max_length=255, null=True, blank=True)
+    barangay = models.CharField(max_length=255, null=True, blank=True)
+    street = models.CharField(max_length=255, null=True, blank=True)
+    landmark = models.CharField(max_length=255, null=True, blank=True)
 
 
 
@@ -37,8 +40,7 @@ class Booking(models.Model):
 
     status = models.CharField(max_length=20, choices=status_choices, default='pending')
 
-    class Meta:
-        unique_together = ('artist','event_date')
+
 
     def complete_booking (self):
         self.is_completed = True
@@ -57,7 +59,6 @@ class Booking(models.Model):
 
     def save(self, *args, **kwargs):
         self.clean()
-        self.amount = self.artist.rate
         super().save(*args, **kwargs)
 
 

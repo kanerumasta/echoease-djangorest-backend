@@ -17,9 +17,10 @@ from .serializers import (
                             PortfolioItemSerializer, 
                             PortfolioSerializer,
                             GenreSerializer,
-                            IDTypeSerializer
+                            IDTypeSerializer,
+                            RateSerializer
                           )
-from .models import Artist, PortfolioItem, Portfolio
+from .models import Artist, PortfolioItem, Portfolio, Rate
 
 
 class ArtistView(APIView):
@@ -46,8 +47,10 @@ class ArtistView(APIView):
 
     def get(self, request,pk=None, slug=None):
         current = request.GET.get('current', 'False').lower() == 'true'
+        print(current)
         if current:
             user = request.user
+
             artist = get_object_or_404(Artist, user = user)
             serializer = ArtistSerializer(artist)
             return Response(serializer.data, status=status.HTTP_200_OK)
@@ -83,15 +86,10 @@ class PortfolioItemView(APIView):
     permission_classes=[IsArtist, IsAuthenticated]
 
     def post(self, request):
-        artist = Artist.objects.get(user = request.user)
-        portfolio = artist.portfolio # type: ignore
-        data = request.data.copy()
-        data['portfolio'] = portfolio.id
-        serializer = PortfolioItemSerializer(data=data)
-
+        print(request.data)
+        serializer = PortfolioItemSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
-            request.user.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         
@@ -128,7 +126,7 @@ class ArtistApplicationView(APIView):
             serializer = ArtistApplicationSerializer(data = request.data)
             if serializer.is_valid():
                 serializer.save(user=user)
-                return Response({'message':'Your application is in process.'}, status = status.HTTP_201_CREATED)
+                return Response(serializer.data, status = status.HTTP_201_CREATED)
             
             return Response(serializer.errors, status= status.HTTP_400_BAD_REQUEST)
         except Exception as e:
@@ -162,6 +160,25 @@ class IDTypesView(APIView):
         accepted_ids = get_list_or_404(IDType)
         serializer = IDTypeSerializer(accepted_ids, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+    
+
+class RateView(APIView):
+    def get(self, request, id):
+        artist = get_object_or_404(Artist, id=id)
+        rates = artist.artist_rates.all()
+        serializer = RateSerializer(rates,many=True)
+        return Response(serializer.data,status=status.HTTP_200_OK)
+
+
+
+    def post(self, request):
+        print(request.data)
+        serializer = RateSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        print(serializer.errors)
+        return Response(status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['POST'])
 def follow(request):

@@ -6,16 +6,23 @@ from rest_framework import status
 from .serializers import BookingSerializer
 from django.shortcuts import get_list_or_404, get_object_or_404
 from .models import Booking
+from notification.models import Notification
 from .permissions import IsInvolved
 from rest_framework.decorators  import permission_classes
+from .utils import (
+    create_new_booking_notification
+)
+
+
 
 class BookingView(views.APIView):
     def post(self, request):
-        print(request.data)
         serializer = BookingSerializer(data = request.data)
         try:      
             if serializer.is_valid():
-                serializer.save(client = request.user)
+                booking = serializer.save(client = request.user)
+                booking_id = booking.id
+                create_new_booking_notification(booking_id)
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
             print(serializer.errors)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

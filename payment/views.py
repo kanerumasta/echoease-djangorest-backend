@@ -4,7 +4,7 @@ from django.shortcuts import render
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .utils import create_paypal_order,capture_payment
+from .utils import create_paypal_order,capture_payment, create_paymongo_payment_link
 from django.shortcuts import get_object_or_404
 from booking.models import Booking
 from django.http import Http404
@@ -67,3 +67,10 @@ class PaypalCapturePaymentView(APIView):
         print('ERROR: capture payment')
         return Response({'message':'error capture downpayment'}, status=status.HTTP_400_BAD_REQUEST)
 
+class CreatePaymongoPaymentLinkView(APIView):
+    def post(self, request):
+        amount = request.data['amount']
+        success, data = create_paymongo_payment_link(amount=int(amount))
+        if success:
+            return Response({'checkout_link':data},status=status.HTTP_200_OK)
+        return Response(status=status.HTTP_400_BAD_REQUEST)

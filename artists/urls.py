@@ -8,7 +8,8 @@ from .views import (
     ArtistApplicationView,
     GenreView,
     IDTypesView,
-    follow,unfollow,
+    follow,unfollow,PortfolioItemView, PortfolioView,
+    RateView
 )
 
 # ARTIST URLS
@@ -24,5 +25,10 @@ urlpatterns = [
     path('accepted-ids/<int:pk>',IDTypesView.as_view()),
     path('follow', follow),
     path('unfollow', unfollow),
+    path('portfolio-item',PortfolioItemView.as_view()),
+    path('portfolio/<int:artist_id>', PortfolioView.as_view()),
+    path('rates', RateView.as_view()),
+    path('<int:id>/rates', RateView.as_view()),
+
 ]
   

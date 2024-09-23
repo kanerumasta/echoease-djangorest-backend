@@ -8,7 +8,8 @@ from .models import (
     PortfolioItem,
     Artist,
     Genre,
-    IDType
+    IDType,
+    Rate
 )
 
 
@@ -84,3 +85,4 @@ admin.site.register(Genre, GenreAdmin)
 admin.site.register(Portfolio)
 admin.site.register(PortfolioItem)
 admin.site.register(IDType)
+admin.site.register(Rate)

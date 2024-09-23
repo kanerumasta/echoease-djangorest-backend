@@ -30,7 +30,7 @@ class Payment(models.Model):
         return self.amount - (self.app_commission + self.processing_fee)
     
     def __str__(self):
-        return f'Payment {self.pk} tid:{self.reference_id}'
+        return f'Payment {self.pk} refid:{self.reference_id}'
     
 
 
@@ -40,3 +40,6 @@ class Payout(models.Model):
     artist = models.ForeignKey(Artist, on_delete=models.CASCADE)
     payment = models.ForeignKey(Payment, on_delete=models.CASCADE)
     payout_date = models.DateTimeField(auto_now_add=True)
+
+
+

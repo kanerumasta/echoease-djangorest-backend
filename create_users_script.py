@@ -1,0 +1,51 @@
+from users.models import UserAccount
+
+accounts = [
+  { "email": "layla@gmail.com", "first_name": "Layla", "last_name": "Adventurer", "password": "M4cn1n0@011456", "is_active": True },
+  { "email": "miya@gmail.com", "first_name": "Miya", "last_name": "Moonlight", "password": "M4cn1n0@011456", "is_active": True },
+  { "email": "kagura@gmail.com", "first_name": "Kagura", "last_name": "Seeker", "password": "M4cn1n0@011456", "is_active": True },
+  { "email": "gusion@gmail.com", "first_name": "Gusion", "last_name": "Ninja", "password": "M4cn1n0@011456", "is_active": True },
+  { "email": "granger@gmail.com", "first_name": "Granger", "last_name": "Gunslinger", "password": "M4cn1n0@011456", "is_active": True },
+  { "email": "wanwan@gmail.com", "first_name": "Wanwan", "last_name": "Cat's Paw", "password": "M4cn1n0@011456", "is_active": True },
+  { "email": "clint@gmail.com", "first_name": "Clint", "last_name": "Sharpshooter", "password": "M4cn1n0@011456", "is_active": True },
+  { "email": "estus@gmail.com", "first_name": "Estus", "last_name": "Soul Guardian", "password": "M4cn1n0@011456", "is_active": True },
+  { "email": "baxia@gmail.com", "first_name": "Baxia", "last_name": "The Guardian", "password": "M4cn1n0@011456", "is_active": True },
+  { "email": "selena@gmail.com", "first_name": "Selena", "last_name": "Shadow", "password": "M4cn1n0@011456", "is_active": True },
+  { "email": "lancelot@gmail.com", "first_name": "Lancelot", "last_name": "The Knight", "password": "M4cn1n0@011456", "is_active": True },
+  { "email": "harith@gmail.com", "first_name": "Harith", "last_name": "Time Traveler", "password": "M4cn1n0@011456", "is_active": True },
+  { "email": "karrie@gmail.com", "first_name": "Karrie", "last_name": "Light Chaser", "password": "M4cn1n0@011456", "is_active": True },
+  { "email": "alpha@gmail.com", "first_name": "Alpha", "last_name": "Cybernetic", "password": "M4cn1n0@011456", "is_active": True },
+  { "email": "franco@gmail.com", "first_name": "Franco", "last_name": "The Pirate", "password": "M4cn1n0@011456", "is_active": True },
+  { "email": "aurora@gmail.com", "first_name": "Aurora", "last_name": "Ice Mage", "password": "M4cn1n0@011456", "is_active": True },
+  { "email": "lylia@gmail.com", "first_name": "Lylia", "last_name": "The Sorceress", "password": "M4cn1n0@011456", "is_active": True },
+  { "email": "masha@gmail.com", "first_name": "Masha", "last_name": "Bear Rider", "password": "M4cn1n0@011456", "is_active": True },
+  { "email": "zilong@gmail.com", "first_name": "Zilong", "last_name": "The Dragon Warrior", "password": "M4cn1n0@011456", "is_active": True },
+  { "email": "khufra@gmail.com", "first_name": "Khufra", "last_name": "The Guardian", "password": "M4cn1n0@011456", "is_active": True },
+  { "email": "martis@gmail.com", "first_name": "Martis", "last_name": "The Warrior", "password": "M4cn1n0@011456", "is_active": True },
+  { "email": "gord@gmail.com", "first_name": "Gord", "last_name": "The Mage", "password": "M4cn1n0@011456", "is_active": True },
+  { "email": "fanny@gmail.com", "first_name": "Fanny", "last_name": "The Assassin", "password": "M4cn1n0@011456", "is_active": True },
+  { "email": "pharsa@gmail.com", "first_name": "Pharsa", "last_name": "The Sky Mage", "password": "M4cn1n0@011456", "is_active": True },
+  { "email": "esmeralda@gmail.com", "first_name": "Esmeralda", "last_name": "The Celestial", "password": "M4cn1n0@011456", "is_active": True },
+  { "email": "grock@gmail.com", "first_name": "Grock", "last_name": "The Wall", "password": "M4cn1n0@011456", "is_active": True },
+  { "email": "leomord@gmail.com", "first_name": "Leomord", "last_name": "The Knight", "password": "M4cn1n0@011456", "is_active": True },
+  { "email": "xborg@gmail.com", "first_name": "Xborg", "last_name": "The Machine", "password": "M4cn1n0@011456", "is_active": True },
+  { "email": "benedetta@gmail.com", "first_name": "Benedetta", "last_name": "The Blades", "password": "M4cn1n0@011456", "is_active": True },
+  { "email": "cecillia@gmail.com", "first_name": "Cecillia", "last_name": "The Sorceress", "password": "M4cn1n0@011456", "is_active": True },
+  { "email": "harley@gmail.com", "first_name": "Harley", "last_name": "The Joker", "password": "M4cn1n0@011456", "is_active": True },
+  { "email": "nana@gmail.com", "first_name": "Nana", "last_name": "The Cat", "password": "M4cn1n0@011456", "is_active": True },
+  { "email": "luoyi@gmail.com", "first_name": "Luoyi", "last_name": "The Mage", "password": "M4cn1n0@011456", "is_active": True },
+  { "email": "natasha@gmail.com", "first_name": "Natasha", "last_name": "The Spy", "password": "M4cn1n0@011456", "is_active": True },
+  { "email": "sylvanna@gmail.com", "first_name": "Sylvanna", "last_name": "The Guardian", "password": "M4cn1n0@011456", "is_active": True },
+  { "email": "minotaur@gmail.com", "first_name": "Minotaur", "last_name": "The Beast", "password": "M4cn1n0@011456", "is_active": True },
+  { "email": "kagura@gmail.com", "first_name": "Kagura", "last_name": "The Shogun", "password": "M4cn1n0@011456", "is_active": True },
+  { "email": "lancelot@gmail.com", "first_name": "Lancelot", "last_name": "The Hero", "password": "M4cn1n0@011456", "is_active": True },
+  { "email": "gusion@gmail.com", "first_name": "Gusion", "last_name": "The Flash", "password": "M4cn1n0@011456", "is_active": True },
+  { "email": "khaleed@gmail.com", "first_name": "Khaleed", "last_name": "The Sand Guardian", "password": "M4cn1n0@011456", "is_active": True },
+  { "email": "alpha@gmail.com", "first_name": "Alpha", "last_name": "The Cyborg", "password": "M4cn1n0@011456", "is_active": True },
+  { "email": "pharsa@gmail.com", "first_name": "Pharsa", "last_name": "The Aerial Mage", "password": "M4cn1n0@011456", "is_active": True },
+  { "email": "yve@gmail.com", "first_name": "Yve", "last_name": "The Enchanter", "password": "M4cn1n0@011456", "is_active": True }
+];
+
+for ac in accounts:
+    user = UserAccount.objects.create_user(email="one@gmail.com", first_name="one", last_name="one", password="M4cn1n0@011456", is_active=True)
+

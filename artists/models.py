@@ -20,6 +20,8 @@ class Genre(models.Model):
 
     def __str__(self):
         return self.name
+    
+
 
 
 class ArtistApplication(models.Model):
@@ -59,9 +61,6 @@ class ArtistApplication(models.Model):
     front_id = models.ImageField(upload_to="images/", null=True, blank=True)
     back_id = models.ImageField(upload_to="images/", null=True, blank=True)
 
-    rate = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
-
-
     def __str__(self):
         if self.user:
             return f'Application {self.user}'
@@ -77,7 +76,7 @@ class Artist(models.Model):
     fb_link = models.CharField(max_length=255, null=True, blank=True)
     instagram = models.CharField(max_length=255, null=True, blank=True)
     twitter = models.CharField(max_length=255, null=True, blank=True)
-    rate = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
+    
 
 
     STATUS = [
@@ -131,8 +130,8 @@ class PortfolioItem(models.Model):
     group = models.CharField(max_length=50,default="portfolio",choices=GROUPS,null=True, blank=True)
 
     #LIMIT TWO VIDEOS AND 5 IMAGES
-    video1 = models.FileField(upload_to="videos/",null=True, blank=True),
-    video2 = models.FileField(upload_to="videos/",null=True, blank=True),
+    video1 = models.FileField(upload_to="videos/",null=True, blank=True)
+    video2 = models.FileField(upload_to="videos/",null=True, blank=True)
 
     image1 = models.ImageField(upload_to="images/", null=True, blank=True)
     image2 = models.ImageField(upload_to="images/", null=True, blank=True)
@@ -142,5 +141,9 @@ class PortfolioItem(models.Model):
 
 
 
-    def __str__(self):
-        return f'PortfolioItem-{self.portfolio.pk}-{self.pk}' # type: ignore
+class Rate(models.Model):
+    artist = models.ForeignKey(Artist, on_delete=models.CASCADE, related_name='artist_rates', null=True, blank=True)
+    artist_application = models.ForeignKey(ArtistApplication, on_delete=models.CASCADE, related_name='rates', null=True, blank=True)
+    name = models.CharField(max_length=255)
+    amount = models.PositiveIntegerField()
+    
