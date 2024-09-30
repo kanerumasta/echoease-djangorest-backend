@@ -33,13 +33,13 @@ class ArtistApplicationAdmin(admin.ModelAdmin):
                         idol = application.idol,
                         years_experience = application.years_experience,
                         bio = application.bio,
-                        rate = application.rate
-                       
+
+
 
                     )
 
                     artist.genres.set(application.genres.all())
-                    
+
                     application.status = 'approved'
                     application.save()
                     application.user.role = 'artist'

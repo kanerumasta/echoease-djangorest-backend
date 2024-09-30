@@ -29,6 +29,7 @@ urlpatterns = [
     path('whoami/', UserView.as_view()),
     path('is-artist/',is_artist),
     path('check-email/<str:email>',check_email ),
+    path('role-pick',UserView.as_view())
 
     
 ]

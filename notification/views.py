@@ -25,6 +25,18 @@ class NotificationView(APIView):
     def get(self, request, id=None):
         new = request.GET.get('new', 'False').lower() == 'true'
         old = request.GET.get('old', 'False').lower() == 'true'
+        count = request.GET.get('count', 'False').lower() == 'true'
+        if new:
+            try:
+                notifications = Notification.objects.filter(Q(user = request.user)&Q(is_read = False))
+                if count:
+                    unread_count = notifications.count()
+                    return Response({'notifications_count': unread_count}, status=status.HTTP_200_OK)
+                serializer = NotificationSerializer(notifications, many=True)
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            except Exception as e:
+                print(e)
+                return Response({'message':'Error fetching new notifications.'},status=status.HTTP_400_BAD_REQUEST)
         if new:
             try:
                 notifications = Notification.objects.filter(Q(user = request.user)&Q(is_read = False))

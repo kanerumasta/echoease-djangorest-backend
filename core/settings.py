@@ -27,11 +27,14 @@ DEBUG = getenv('DEBUG', 'False') == 'True'
 
 ALLOWED_HOSTS = getenv('DJANGO_ALLOWED_HOSTS','127.0.0.1').split(',')
 
+# ALLOWED_HOSTS = ["192.168.1.242"]
+
 
 # Application definition
 
 INSTALLED_APPS = [
     'daphne',
+    'jazzmin',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -237,6 +240,13 @@ CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels.layers.InMemoryChannelLayer',
     },
+}
+
+JAZZMIN_SETTINGS = {
+    'site_title':'Echoease Admin',
+    'site_header':'Echoease ',
+    'site_brand':'Echoease Admin',
+
 }
 
 

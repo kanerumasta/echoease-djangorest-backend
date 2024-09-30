@@ -14,7 +14,7 @@ from .permissions import IsArtist
 from .serializers import (
                             ArtistApplicationSerializer,
                             ArtistSerializer ,
-                            PortfolioItemSerializer, 
+                            PortfolioItemSerializer,
                             PortfolioSerializer,
                             GenreSerializer,
                             IDTypeSerializer,
@@ -43,7 +43,7 @@ class ArtistView(APIView):
         except ValidationError as e:
             print(e)
             return Response(serializer.errors, status = status.HTTP_400_BAD_REQUEST)
-    
+
 
     def get(self, request,pk=None, slug=None):
         current = request.GET.get('current', 'False').lower() == 'true'
@@ -67,12 +67,10 @@ class ArtistView(APIView):
             serializer = ArtistSerializer(artist_list, many=True)
             return Response(serializer.data, status = status.HTTP_200_OK)
 
-            
+
 class PortfolioView(APIView):
-    permission_classes=[IsArtist, IsAuthenticated]
-
+    permission_classes=[AllowAny]
     def get(self, request, artist_id):
-
         artist = get_object_or_404(Artist, id=artist_id)
         try:
             portfolio = artist.portfolio # type: ignore
@@ -80,7 +78,7 @@ class PortfolioView(APIView):
             return Response({'message':'Portfolio of this user does not exists'}, status = status.HTTP_404_NOT_FOUND)
         serializer = PortfolioSerializer(portfolio)
         return Response(serializer.data, status = status.HTTP_200_OK)
-    
+
 
 class PortfolioItemView(APIView):
     permission_classes=[IsArtist, IsAuthenticated]
@@ -92,8 +90,8 @@ class PortfolioItemView(APIView):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        
-    
+
+
     def put(self, request, id):
         if id:
             portfolio_item = get_object_or_404(PortfolioItem, id=id)
@@ -102,10 +100,19 @@ class PortfolioItemView(APIView):
                 serializer.save()
                 return Response(serializer.data, status = status.HTTP_200_OK)
             return Response(serializer.errors, status = status.HTTP_400_BAD_REQUEST)
-        
+
 class ArtistApplicationView(APIView):
     #FOR ADMIN ONLY
     def get(self, request):
+
+        #search params to only check if current user has artist application already
+        check = request.GET.get('check','False').lower() == 'true'
+        if check:
+            application = ArtistApplication.objects.filter(user = request.user)
+            if application.exists():
+                return Response({'message':'You already have an artist application'},status=status.HTTP_400_BAD_REQUEST)
+            else:
+                return Response(status=status.HTTP_204_NO_CONTENT)
         try:
             applications = ArtistApplication.objects.all()
             serializer = ArtistApplicationSerializer(applications, many = True)
@@ -127,31 +134,37 @@ class ArtistApplicationView(APIView):
             if serializer.is_valid():
                 serializer.save(user=user)
                 return Response(serializer.data, status = status.HTTP_201_CREATED)
-            
+            print(serializer.errors)
             return Response(serializer.errors, status= status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             print(e)
             return Response(status = status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
+
 class GenreView(APIView):
     def get(self, request, id=None):
-       
+
         if id:
             genre = get_object_or_404(Genre, id = id)
             serializer = GenreSerializer(genre)
             return Response(serializer.data, status = status.HTTP_200_OK)
-        
+
         try:
             genres = Genre.objects.all()
             serializer = GenreSerializer(genres, many=True)
             return Response(serializer.data, status = status.HTTP_200_OK)
-            
+
         except Exception as e:
             print(e)
             return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class IDTypesView(APIView):
+
+    def get_permissions(self):
+        print(self.request.method)
+        if self.request.method == 'GET':
+            return [AllowAny()]
+        return super().get_permissions()
     def get(self, request, pk=None):
         if pk:
             id_type = get_object_or_404(IDType, pk=pk)
@@ -160,7 +173,7 @@ class IDTypesView(APIView):
         accepted_ids = get_list_or_404(IDType)
         serializer = IDTypeSerializer(accepted_ids, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
-    
+
 
 class RateView(APIView):
     def get(self, request, id):

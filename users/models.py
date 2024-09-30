@@ -4,7 +4,6 @@ from django.contrib.auth.models import BaseUserManager, AbstractBaseUser, Permis
 
 from .validators import date_not_future
 
-
 class UserAccountManager(BaseUserManager):
     def create_user(self, email, password=None, **kwargs):
 
@@ -37,6 +36,8 @@ class UserAccountManager(BaseUserManager):
         return user
 
 
+
+
 class UserAccount(AbstractBaseUser, PermissionsMixin):
     first_name = models.CharField(max_length=255)
     last_name = models.CharField(max_length=255, null=True, blank=True)
@@ -44,20 +45,41 @@ class UserAccount(AbstractBaseUser, PermissionsMixin):
         max_length=255,
         unique=True,
     )
-
     is_verified = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     is_superuser = models.BooleanField(default=False)
 
-
     # Roles
     Roles = (('artist', 'Artist'), ('client', 'Client'), ('admin', 'Admin'))
     role = models.CharField(choices=Roles, default='client',
                             max_length=20, null=True, blank=True)
-    
     joined = models.DateField(auto_now_add=True)
     modified = models.DateField(auto_now=True)
+    Categories = (('bar_owner', 'Bar Owner'), ('regular', 'Regular'), ('event_organizer', 'Event Organizer'))
+    category = models.CharField(max_length=50,choices=Categories, default='regular')
+    is_roled = models.BooleanField(default=False)
+
+    
+    production_page = models.CharField(max_length=255, null=True, blank=True)
+
+    doc_image1 = models.ImageField(upload_to="images/", null=True, blank=True)
+    doc_image2 = models.ImageField(upload_to="images/", null=True, blank=True)
+    doc_image3 = models.ImageField(upload_to="images/", null=True, blank=True)
+    doc_image4 = models.ImageField(upload_to="images/", null=True, blank=True)
+    doc_image5 = models.ImageField(upload_to="images/", null=True, blank=True)
+    
+
+    #for bar owners
+    business_permit = models.ImageField(upload_to="images/",null=True, blank=True)
+
+    #for individual // all
+    government_id = models.ImageField(upload_to="images/", null=True, blank=True)
+    government_id_type = models.CharField(max_length=255, null=True, blank=True)
+
+
+
+
 
     @property
     def is_artist(self):
@@ -82,12 +104,10 @@ class UserAccount(AbstractBaseUser, PermissionsMixin):
 
 class Profile(models.Model):
     profile_image = models.ImageField(upload_to="images/profiles/", null=True, blank=True)
-
     dob = models.DateField(blank=True, null=True, validators=[date_not_future])
     gender = models.CharField(max_length=20, null=True, blank=True)
     # Contacts
     phone = models.CharField(max_length=20, blank=True, null=True)
-
     # Address
     country = models.CharField(max_length=255, default="philippines", null=True, blank=True)
     province = models.CharField(max_length=255, null=True, blank=True)  
@@ -97,19 +117,22 @@ class Profile(models.Model):
     zipcode = models.CharField(max_length=10, null=True, blank=True)
     is_complete = models.BooleanField(default=False)
 
-
     # Socials
     fb_page = models.CharField(max_length=255, null=True, blank=True)
-
     # Relationships
     user = models.OneToOneField(
         UserAccount, related_name='profile', on_delete=models.CASCADE, null=True, blank=True)
-    
     #new fields
     nationality = models.CharField(max_length=50, default="filipino")
     language = models.CharField(max_length=255, null=True, blank=True)
-    
+
+
+
+
 
     def __str__(self):
         return f'P-{self.user}'
+
+
+
 

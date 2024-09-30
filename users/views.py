@@ -162,6 +162,23 @@ class UserView(APIView):
             return Response({'message':'unexpected error'}, status = status.HTTP_400_BAD_REQUEST)
         
 
+    #picking role before booking | organizer | regular | bar owner
+    def patch(self, request):
+        print(request.data)
+        serializer = UserAccountSerializer(request.user,data = request.data, partial = True)
+        if serializer.is_valid():
+            serializer.save()
+            request.user.is_roled = True
+            request.user.save()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        print(serializer.errors)
+
+        return Response(status=status.HTTP_400_BAD_REQUEST)
+        
+
+
+        
+
 
 @api_view(['GET'])
 def is_artist(request):
