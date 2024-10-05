@@ -9,7 +9,9 @@ from .models import (
     Artist,
     Genre,
     IDType,
-    Rate
+    Rate,
+    ConnectionRequest,
+    TimeSlot
 )
 
 
@@ -33,12 +35,15 @@ class ArtistApplicationAdmin(admin.ModelAdmin):
                         idol = application.idol,
                         years_experience = application.years_experience,
                         bio = application.bio,
-
-
-
                     )
 
                     artist.genres.set(application.genres.all())
+
+                    rates = application.rates.all()
+                    for rate in rates:
+                        rate.artist = artist
+                        rate.save()
+
 
                     application.status = 'approved'
                     application.save()
@@ -75,14 +80,16 @@ class ArtistAdmin(admin.ModelAdmin):
     activate.short_description = "Activate selected artists"
     deactivate.short_description = "Deactivate selectted artists"
 
-class GenreAdmin(admin.ModelAdmin):
-    list_display = ['__str__','id']
+class GeneralAdmin(admin.ModelAdmin):
+    list_display = ['id','__str__']
     list_display_links = ('id','__str__')
 
 admin.site.register(ArtistApplication, ArtistApplicationAdmin)
 admin.site.register(Artist, ArtistAdmin)
-admin.site.register(Genre, GenreAdmin)
-admin.site.register(Portfolio)
-admin.site.register(PortfolioItem)
-admin.site.register(IDType)
-admin.site.register(Rate)
+admin.site.register(Genre, GeneralAdmin)
+admin.site.register(Portfolio,GeneralAdmin)
+admin.site.register(PortfolioItem,GeneralAdmin)
+admin.site.register(IDType,GeneralAdmin)
+admin.site.register(Rate, GeneralAdmin)
+admin.site.register(ConnectionRequest, GeneralAdmin)
+admin.site.register(TimeSlot, GeneralAdmin)

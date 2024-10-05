@@ -12,14 +12,7 @@ class Payment(models.Model):
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     payment_date = models.DateTimeField(auto_now_add=True)
     processing_fee = models.DecimalField(max_digits=10, decimal_places=2) #Payment service(E.g Paypal) processing fee
-    app_commission = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
-    
-
-    payment_method_choices = [
-        ('paypal', 'Paypal'),
-        ('gcash', 'Gcash'),
-    ]
-    payment_method = models.CharField(choices=payment_method_choices)
+    payment_method = models.CharField(max_length=50, null=True, blank=True)
 
     def save(self, *args, **kwargs):
         self.app_commission = self.amount - Decimal('0.12') #12% COMMISSION CHANGEABLE
@@ -27,19 +20,16 @@ class Payment(models.Model):
 
     @property
     def net_amount(self):
-        return self.amount - (self.app_commission + self.processing_fee)
-    
+        return self.amount - self.processing_fee
+
     def __str__(self):
         return f'Payment {self.pk} refid:{self.reference_id}'
-    
+
 
 
 class Payout(models.Model):
-    transaction_id = models.CharField(max_length=50)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     artist = models.ForeignKey(Artist, on_delete=models.CASCADE)
     payment = models.ForeignKey(Payment, on_delete=models.CASCADE)
+    app_commission = models.DecimalField(max_digits=10,decimal_places=1,null=True)
     payout_date = models.DateTimeField(auto_now_add=True)
-
-
-

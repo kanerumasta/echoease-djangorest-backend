@@ -60,7 +60,7 @@ class UserAccount(AbstractBaseUser, PermissionsMixin):
     category = models.CharField(max_length=50,choices=Categories, default='regular')
     is_roled = models.BooleanField(default=False)
 
-    
+
     production_page = models.CharField(max_length=255, null=True, blank=True)
 
     doc_image1 = models.ImageField(upload_to="images/", null=True, blank=True)
@@ -68,7 +68,7 @@ class UserAccount(AbstractBaseUser, PermissionsMixin):
     doc_image3 = models.ImageField(upload_to="images/", null=True, blank=True)
     doc_image4 = models.ImageField(upload_to="images/", null=True, blank=True)
     doc_image5 = models.ImageField(upload_to="images/", null=True, blank=True)
-    
+
 
     #for bar owners
     business_permit = models.ImageField(upload_to="images/",null=True, blank=True)
@@ -76,10 +76,6 @@ class UserAccount(AbstractBaseUser, PermissionsMixin):
     #for individual // all
     government_id = models.ImageField(upload_to="images/", null=True, blank=True)
     government_id_type = models.CharField(max_length=255, null=True, blank=True)
-
-
-
-
 
     @property
     def is_artist(self):
@@ -99,7 +95,7 @@ class UserAccount(AbstractBaseUser, PermissionsMixin):
     REQUIRED_FIELDS = ['first_name', 'last_name']
 
     def __str__(self):
-        return self.email
+        return f'{self.first_name} {self.last_name}'.title()
 
 
 class Profile(models.Model):
@@ -110,8 +106,8 @@ class Profile(models.Model):
     phone = models.CharField(max_length=20, blank=True, null=True)
     # Address
     country = models.CharField(max_length=255, default="philippines", null=True, blank=True)
-    province = models.CharField(max_length=255, null=True, blank=True)  
-    municipality = models.CharField(max_length=255, null=True, blank=True)  
+    province = models.CharField(max_length=255, null=True, blank=True)
+    municipality = models.CharField(max_length=255, null=True, blank=True)
     brgy = models.CharField(max_length=60, null=True, blank=True)
     street = models.CharField(max_length=255, null=True, blank=True)
     zipcode = models.CharField(max_length=10, null=True, blank=True)
@@ -132,7 +128,3 @@ class Profile(models.Model):
 
     def __str__(self):
         return f'P-{self.user}'
-
-
-
-

@@ -6,12 +6,12 @@ from django.core.management.utils import get_random_secret_key
 from datetime import timedelta
 
 
-#Cloudinary imports 
+#Cloudinary imports
 # import cloudinary
 # import cloudinary.api
 # import cloudinary.uploader
 
-
+APPEND_SLASH = True
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -54,7 +54,7 @@ INSTALLED_APPS = [
     'dispute',
     'notification',
 
-    
+
 ]
 
 MIDDLEWARE = [
@@ -159,7 +159,7 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticated'
     ],
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 10, 
+    'PAGE_SIZE': 10,
 
 }
 
@@ -215,6 +215,8 @@ EMAIL_HOST_PASSWORD = getenv('EMAIL_HOST_PASSWORD')
 SITE_NAME = 'Echoease'
 DOMAIN = getenv('DOMAIN', 'localhost:3000')
 
+
+
 DEFAULT_FROM_EMAIL = getenv('DEFAULT_FROM_EMAIL')
 
 #Django - Cloudinary Configuration
@@ -249,6 +251,4 @@ JAZZMIN_SETTINGS = {
 
 }
 
-
-
-
+PAYMONGO_SECRET_KEY = getenv('PAYMONGO_SECRET_KEY')

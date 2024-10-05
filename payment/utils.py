@@ -5,7 +5,7 @@ from os import getenv
 from pydantic import BaseModel, ValidationError
 from typing import Optional
 import base64
-
+from django.conf import settings
 
 class PaypalAccessTokenResult(BaseModel):
     data:Optional[str]
@@ -22,7 +22,7 @@ class Result (BaseModel):
     data:Optional[str] = None
 
 class AuthorizationData(BaseModel):
-    authorization_id : str 
+    authorization_id : str
     amount : str
 class AuthorizationResult(BaseModel):
     success:bool
@@ -59,7 +59,7 @@ def get_paypal_endpoints() -> PaypalEndpoints:
     base_url = getenv('PAYPAL_BASE_URL')
 
     return PaypalEndpoints(client_id=client_id, secret=secret, base_url=base_url) # type: ignore
-    
+
 
 
 
@@ -72,9 +72,9 @@ def get_access_token()->PaypalAccessTokenResult:
     token_url = f'{paypal_endpoints.base_url}/v1/oauth2/token'
     token_payload = {'grant_type': 'client_credentials'}
     token_headers = {'Accept': 'application/json', 'Accept-Language': 'en_US'}
-    
+
     token_response = requests.post(token_url, auth=(paypal_endpoints.client_id, paypal_endpoints.secret), data=token_payload, headers=token_headers)
-    
+
     if token_response.status_code != 200:
         return PaypalAccessTokenResult(data=None, error="Failed to Authenticate with paypal API")
     access_token = token_response.json().get('access_token')
@@ -90,10 +90,10 @@ def create_paypal_order(booking_id,amount, currency_code, return_url, cancel_url
 
     if not token_result.data:
         return CreateOrderResult(success=False, error=token_result.error)
-    
-    
 
-    order_payload ={ 
+
+
+    order_payload ={
         "intent": "CAPTURE",
         "purchase_units": [
             {
@@ -119,7 +119,7 @@ def create_paypal_order(booking_id,amount, currency_code, return_url, cancel_url
             }
         }
     }
-    
+
     order_url = f'{endpoints.base_url}/v2/checkout/orders'
     order_headers = {
         'Content-Type': 'application/json',
@@ -128,7 +128,7 @@ def create_paypal_order(booking_id,amount, currency_code, return_url, cancel_url
 
     # Create payment request
     order_response = requests.post(order_url, data=json.dumps(order_payload), headers=order_headers)
-  
+
     if order_response.status_code != 200:
         return CreateOrderResult(success=False, error='Failed to create PayPal payment.', order_id=None)
 
@@ -138,7 +138,7 @@ def create_paypal_order(booking_id,amount, currency_code, return_url, cancel_url
     return CreateOrderResult(success=True, order_id=order_id, error=str(order_response.status_code), payer_action_link=payer_action_link)
 
 def capture_payment(order_id):
-    
+
     token =get_access_token()
     paypal_endpoints = get_paypal_endpoints()
     base_url = paypal_endpoints.base_url
@@ -153,7 +153,7 @@ def capture_payment(order_id):
     capture_headers = {
         'Content-Type':'application/json',
         'Authorization':f'Bearer {token.data}'
-    }   
+    }
 
     capture_response = requests.post(url=capture_url, headers=capture_headers)
 
@@ -184,12 +184,14 @@ def get_base64_key(secret_key):
 
 def create_paymongo_payment_link(amount):
     url = "https://api.paymongo.com/v1/links"
-
-    auth_key = get_base64_key("sk_test_1X9wP8JRD8Dhoc5GZga1m2gj") #ENV THIS
+    paymongo_key = settings.PAYMONGO_SECRET_KEY
+    if not paymongo_key:
+        raise ValueError('Unable to retrieve paymongo secret key.')
+    auth_key = get_base64_key(paymongo_key)
 
     headers = {'accept':'application/json','content-type':'application/json', 'authorization':f'Basic {auth_key}'}
     payload = { "data": { "attributes": {
-            "amount": amount * 100,
+            "amount": amount * 100, #in centavo
             "description": "sdoifu",
             "remarks": "34"
         } } }

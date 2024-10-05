@@ -1,5 +1,7 @@
 from django.shortcuts import get_object_or_404, get_list_or_404
 from django.contrib.auth.models import AnonymousUser
+from django.db.models import Q
+from django.core.exceptions import ValidationError as DjangoValidationError
 
 from rest_framework.views import APIView
 from rest_framework.decorators import api_view, permission_classes
@@ -7,7 +9,8 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated, IsAdminUser,AllowAny
 from rest_framework.exceptions import ValidationError
-from .models import ArtistApplication, Artist, Genre, IDType
+from .models import ArtistApplication, Artist, Genre, IDType, ConnectionRequest
+from booking.models import Booking
 from .permissions import IsArtist
 
 
@@ -18,7 +21,9 @@ from .serializers import (
                             PortfolioSerializer,
                             GenreSerializer,
                             IDTypeSerializer,
-                            RateSerializer
+                            RateSerializer,
+                            ConnectionRequestSerializer,
+                            ArtistConnectionsSerializer
                           )
 from .models import Artist, PortfolioItem, Portfolio, Rate
 
@@ -47,10 +52,8 @@ class ArtistView(APIView):
 
     def get(self, request,pk=None, slug=None):
         current = request.GET.get('current', 'False').lower() == 'true'
-        print(current)
         if current:
             user = request.user
-
             artist = get_object_or_404(Artist, user = user)
             serializer = ArtistSerializer(artist)
             return Response(serializer.data, status=status.HTTP_200_OK)
@@ -192,6 +195,89 @@ class RateView(APIView):
             return Response(status=status.HTTP_204_NO_CONTENT)
         print(serializer.errors)
         return Response(status=status.HTTP_400_BAD_REQUEST)
+
+
+class ArtistConnectionsView(APIView):
+    def get(self, request):
+        artist = get_object_or_404(Artist, user=request.user)
+        try:
+            serializer = ArtistConnectionsSerializer(artist)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Exception as e:
+            print(e)
+            return Response({'message':'error fetching your connections'}, status=status.HTTP_400_BAD_REQUEST)
+
+class ConnectionRequestView(APIView):
+    permission_classes = [IsArtist]
+    def get(self, request, id=None):
+        if id:
+            pass
+        status_filter  = request.query_params.get('status')
+        artist = get_object_or_404(Artist, user = request.user)
+        connection_requests = ConnectionRequest.objects.filter(Q(sender = artist)|Q(receiver = artist))
+        if status_filter:
+            connection_requests = connection_requests.filter(status = status_filter)
+        serializer = ConnectionRequestSerializer(connection_requests, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def post(self, request):
+        serializer = ConnectionRequestSerializer(data = request.data)
+        print(request.data)
+        try:
+            if serializer.is_valid():
+                    serializer.save()
+                    return Response(serializer.data, status=status.HTTP_201_CREATED)
+            print(serializer.errors)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except DjangoValidationError as e:
+                print(e)
+                return Response({'message':str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            print(type(e))
+            print(e)
+            return Response({'error':str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def patch(self, request):
+        request_id = request.data['request_id']
+        action = request.data.get('action')
+        connection_request = get_object_or_404(ConnectionRequest, id=request_id)
+        if connection_request and action:
+            if action == 'accept':
+                connection_request.accept()
+                return Response(status=status.HTTP_204_NO_CONTENT)
+            if action == 'reject':
+                pass
+
+
+class ReceivedConnectionRequestView(APIView):
+    def get(self,request):
+        status_filter = request.query_params.get('status')
+        artist = get_object_or_404(Artist, user = request.user)
+        connection_requests = ConnectionRequest.objects.filter(receiver = artist)
+        if status_filter:
+            connection_requests = connection_requests.filter(status = status_filter)
+        serializer = ConnectionRequestSerializer(connection_requests, many=True)
+        return Response(serializer.data, status = status.HTTP_200_OK)
+
+
+class SentConnectionRequestView(APIView):
+    def get(self, request):
+        status_filter = request.query_params.get('status')
+        artist = get_object_or_404(Artist, user = request.user)
+        connection_requests = ConnectionRequest.objects.filter(sender = artist)
+        if status_filter:
+            connection_requests = connection_requests.filter(status = status_filter)
+        serializer = ConnectionRequestSerializer(connection_requests, many=True)
+        return Response(serializer.data, status = status.HTTP_200_OK)
+
+
+class ArtistUnavailableDatesView(APIView):
+    def get(self, request, id):
+        artist = get_object_or_404(Artist, id=id)
+        unavailable_dates = Booking.objects.filter(Q(artist=artist) & Q(is_completed = False) &
+            ~Q(status__in=['rejected', 'cancelled']) ).values_list('event_date', flat=True)
+        return Response(list(unavailable_dates), status=status.HTTP_200_OK)
+
 
 @api_view(['POST'])
 def follow(request):
