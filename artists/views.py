@@ -9,9 +9,11 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated, IsAdminUser,AllowAny
 from rest_framework.exceptions import ValidationError
-from .models import ArtistApplication, Artist, Genre, IDType, ConnectionRequest
+from .models import (ArtistApplication, Artist, Genre, IDType, ConnectionRequest, TimeSlot, TimeSlotException, SpecialTimeSlot)
 from booking.models import Booking
 from .permissions import IsArtist
+from django.utils import timezone
+import time
 
 
 from .serializers import (
@@ -23,7 +25,9 @@ from .serializers import (
                             IDTypeSerializer,
                             RateSerializer,
                             ConnectionRequestSerializer,
-                            ArtistConnectionsSerializer
+                            ArtistConnectionsSerializer,TimeSlotSerializer,
+                            TimeslotExceptionSerializer,
+                            SpecialTimeSlotSerializer
                           )
 from .models import Artist, PortfolioItem, Portfolio, Rate
 
@@ -277,6 +281,80 @@ class ArtistUnavailableDatesView(APIView):
         unavailable_dates = Booking.objects.filter(Q(artist=artist) & Q(is_completed = False) &
             ~Q(status__in=['rejected', 'cancelled']) ).values_list('event_date', flat=True)
         return Response(list(unavailable_dates), status=status.HTTP_200_OK)
+
+class TimeSlotView(APIView):
+    def post(self, request):
+        serializer = TimeSlotSerializer(data = request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({'message':'add time slot successful'},status=status.HTTP_200_OK)
+        print(serializer.errors)
+        return Response({'error':'serializer errors'}, status=status.HTTP_400_BAD_REQUEST)
+
+    def get(self, request, artist_id):
+        date = request.GET.get('date', None)
+        artist = get_object_or_404(Artist, id=artist_id)
+
+        if date:
+            try:
+                date_obj = timezone.datetime.strptime(date, '%Y-%m-%d').date()
+            except ValueError:
+                return Response({'error': 'Invalid date format. Use YYYY-MM-DD.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            #Check if there is a special time slot for this date
+            special_time_slots = SpecialTimeSlot.objects.filter(artist=artist, date=date_obj)
+            print(special_time_slots)
+            if special_time_slots.exists():
+                serializer = SpecialTimeSlotSerializer(special_time_slots, many=True)
+                return Response(serializer.data, status=status.HTTP_200_OK)
+
+            # Get all exceptions for the specified date
+            time_slot_exceptions = TimeSlotException.objects.filter(date=date_obj).values_list('time_slot', flat=True)
+
+            # Get all time slots for the artist
+            time_slots = TimeSlot.objects.filter(artist=artist)
+
+            #filter out past time slots if date is now
+            if date_obj == timezone.now().date():
+                current_time = timezone.now().today().time()
+                time_slots = time_slots.exclude(end_time__lte=current_time)
+
+            # Filter out time slots that are in exceptions
+            available_time_slots = time_slots.exclude(
+                Q(id__in=time_slot_exceptions)  # Exclude time slots that are in the exceptions
+            )
+
+            # Serialize the available time slots
+            serializer = TimeSlotSerializer(available_time_slots, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        # If no date is provided, return all time slots for the artist
+        time_slots = TimeSlot.objects.filter(artist=artist)
+        serializer = TimeSlotSerializer(time_slots, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class TimeslotExceptionView(APIView):
+    def post(self, request):
+        serializer = TimeslotExceptionSerializer(data = request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({'message':'successful'}, status=status.HTTP_201_CREATED)
+        print(serializer.errors)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class SpecialTimeslotView(APIView):
+    def post(self, request):
+        serializer = SpecialTimeSlotSerializer(data = request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        print(serializer.errors)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+
 
 
 @api_view(['POST'])

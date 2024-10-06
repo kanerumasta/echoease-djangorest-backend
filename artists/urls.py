@@ -14,7 +14,10 @@ from .views import (
     ArtistConnectionsView,
     SentConnectionRequestView,
     ReceivedConnectionRequestView,
-    ArtistUnavailableDatesView
+    ArtistUnavailableDatesView,
+    TimeSlotView,
+    TimeslotExceptionView,
+    SpecialTimeslotView
 )
 
 # ARTIST URLS
@@ -39,6 +42,11 @@ urlpatterns = [
     path('connection-requests/received', ReceivedConnectionRequestView.as_view()),
     path('connections', ArtistConnectionsView.as_view()),
     path('<int:id>/unavailable-dates',ArtistUnavailableDatesView.as_view()),
+    path('time-slots', TimeSlotView.as_view()),
+    path('time-slots/<int:artist_id>', TimeSlotView.as_view()),
+    path('time-slot-exceptions',TimeslotExceptionView.as_view()),
+    path('time-slot-exceptions/<int:time_slot_id>',TimeslotExceptionView.as_view()),
+    path('special-time-slots',SpecialTimeslotView.as_view()),
 
 
 ]

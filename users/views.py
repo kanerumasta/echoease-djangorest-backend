@@ -1,20 +1,22 @@
 from datetime import datetime
 from django.conf import settings
+
 from djoser.social.views import ProviderAuthView
 from rest_framework_simplejwt.views import (
-    TokenObtainPairView, 
-    TokenRefreshView, 
+    TokenObtainPairView,
+    TokenRefreshView,
     TokenVerifyView
 )
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .serializers import  ProfileSerializer, UserAccountSerializer
+from .serializers import  ProfileSerializer, UserAccountSerializer, ChangeNameSerializer
 from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from .models import UserAccount, Profile
 from django.shortcuts import get_object_or_404
 import pytz
 from rest_framework.permissions import AllowAny
+
 
 
 class CustomProviderAuthView(ProviderAuthView):
@@ -24,7 +26,7 @@ class CustomProviderAuthView(ProviderAuthView):
         if response.status_code == 201:
             access_token = response.data.get('access') # type: ignore
             refresh_token = response.data.get('refresh') # type: ignore
-            
+
             response.set_cookie(
                 'access', access_token,
                 max_age =settings.AUTH_COOKIE_ACCESS_MAX_AGE,
@@ -32,9 +34,9 @@ class CustomProviderAuthView(ProviderAuthView):
                 secure=settings.AUTH_COOKIE_SECURE,
                 path=settings.AUTH_COOKIE_PATH,
                 samesite=settings.AUTH_COOKIE_SAMESITE
-                
+
                 )
-            
+
             response.set_cookie(
                 'refresh', refresh_token,
                 max_age =settings.AUTH_COOKIE_REFRESH_MAX_AGE,
@@ -42,7 +44,7 @@ class CustomProviderAuthView(ProviderAuthView):
                 secure=settings.AUTH_COOKIE_SECURE,
                 path=settings.AUTH_COOKIE_PATH,
                 samesite=settings.AUTH_COOKIE_SAMESITE
-                
+
                 )
 
         return response
@@ -60,9 +62,9 @@ class CustomTokenObtainPairView(TokenObtainPairView):
                 secure=settings.AUTH_COOKIE_SECURE,
                 path=settings.AUTH_COOKIE_PATH,
                 samesite=settings.AUTH_COOKIE_SAMESITE
-                
+
                 )
-            
+
             response.set_cookie(
                 'refresh', refresh_token,
                 max_age =settings.AUTH_COOKIE_REFRESH_MAX_AGE,
@@ -70,10 +72,10 @@ class CustomTokenObtainPairView(TokenObtainPairView):
                 secure=settings.AUTH_COOKIE_SECURE,
                 path=settings.AUTH_COOKIE_PATH,
                 samesite=settings.AUTH_COOKIE_SAMESITE
-                
+
                 )
 
-        return response   
+        return response
 class CustomTokenRefreshView(TokenRefreshView):
     def post(self, request, *args,**kwargs ):
         refresh_token = request.COOKIES.get('refresh')
@@ -90,7 +92,7 @@ class CustomTokenRefreshView(TokenRefreshView):
                 secure=settings.AUTH_COOKIE_SECURE,
                 path=settings.AUTH_COOKIE_PATH,
                 samesite=settings.AUTH_COOKIE_SAMESITE
-                
+
                 )
         return response
 class CustomTokenVerifyView(TokenVerifyView):
@@ -108,7 +110,7 @@ class LogoutView(APIView):
         response.delete_cookie('refresh')
 
         return response
-    
+
 class ProfileView(APIView):
     def get(self,request, pk = None):
         if pk:
@@ -119,7 +121,7 @@ class ProfileView(APIView):
         profile = get_object_or_404(Profile,user = request.user)
         serializer = ProfileSerializer(profile)
         return Response(serializer.data, status=status.HTTP_200_OK)
-        
+
 
 
     def put(self, request):
@@ -129,14 +131,14 @@ class ProfileView(APIView):
             if serializer.is_valid():
                 serializer.save()
                 profile.is_complete = True
-                profile.save()  
+                profile.save()
                 return Response(status = status.HTTP_204_NO_CONTENT)
             print(serializer.errors)
             return Response(serializer.errors,status = status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             print(e)
             return Response(status = status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
+
     def patch(self, request):
         try:
             user = request.user
@@ -146,10 +148,11 @@ class ProfileView(APIView):
             if serializer.is_valid():
                 serializer.save()
                 return Response(status = status.HTTP_200_OK)
+            print(serializer.errors)
             return Response(serializer.errors, status = status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             return Response({'message':'error occured'}, status = status.HTTP_500_INTERNAL_SERVER_ERROR)
-   
+
 class UserView(APIView):
     def get(self, request):
         try:
@@ -160,11 +163,10 @@ class UserView(APIView):
         except Exception as e:
             print(e)
             return Response({'message':'unexpected error'}, status = status.HTTP_400_BAD_REQUEST)
-        
+
 
     #picking role before booking | organizer | regular | bar owner
     def patch(self, request):
-        print(request.data)
         serializer = UserAccountSerializer(request.user,data = request.data, partial = True)
         if serializer.is_valid():
             serializer.save()
@@ -174,10 +176,45 @@ class UserView(APIView):
         print(serializer.errors)
 
         return Response(status=status.HTTP_400_BAD_REQUEST)
-        
 
 
-        
+class UpdateUserView(APIView):
+    def patch(self, request):
+        user = request.user
+        serializer = ChangeNameSerializer(user,data = request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        print(serializer.errors)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+class PasswordResetView(APIView):
+    def post(self, request):
+        try:
+            old_password = request.data.get('old_password')
+            new_password = request.data.get('new_password')
+
+            user = request.user
+
+            if new_password and old_password:
+
+                if not user.check_password(old_password):
+                    return Response({'message':'password is incorrect'}, status=status.HTTP_400_BAD_REQUEST)
+
+                user.set_password(new_password)
+                user.save()
+                return Response(status=status.HTTP_204_NO_CONTENT)
+            else:
+                print('old and new password')
+                return Response({'message':'old password and new password is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as e:
+            print(e)
+            return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 
 
 @api_view(['GET'])
@@ -195,4 +232,3 @@ def check_email(request, email):
     if user:
         return Response({'exists':True}, status=status.HTTP_200_OK)
     return Response({'exists':False},status=status.HTTP_200_OK)
-    

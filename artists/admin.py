@@ -11,7 +11,8 @@ from .models import (
     IDType,
     Rate,
     ConnectionRequest,
-    TimeSlot
+    TimeSlot,TimeSlotException,
+    SpecialTimeSlot
 )
 
 
@@ -93,3 +94,5 @@ admin.site.register(IDType,GeneralAdmin)
 admin.site.register(Rate, GeneralAdmin)
 admin.site.register(ConnectionRequest, GeneralAdmin)
 admin.site.register(TimeSlot, GeneralAdmin)
+admin.site.register(TimeSlotException, GeneralAdmin)
+admin.site.register(SpecialTimeSlot, GeneralAdmin)

@@ -3,6 +3,7 @@ from rest_framework import serializers
 from .models import Profile, UserAccount
 from datetime import datetime
 
+
 class ProfileSerializer(ModelSerializer):
     dob = serializers.DateField(input_formats=["%Y-%m-%d"])
     class Meta:
@@ -12,6 +13,8 @@ class ProfileSerializer(ModelSerializer):
     def to_representation(self, instance):
         representation =  super().to_representation(instance)
         representation['complete_address'] = f'{instance.street}, {instance.brgy}, {instance.municipality}, {instance.province}, {instance.country}'
+        representation['phone'] = f'+63{instance.phone}'
+        representation['dob'] = instance.dob.strftime('%B, %d, %Y')
         return representation
 
 class UserAccountSerializer (ModelSerializer):
@@ -44,3 +47,11 @@ class UserProfileSerializer(ModelSerializer):
         representation =  super().to_representation(instance)
         representation['fullname'] = f'{instance.first_name} {instance.last_name}'
         return representation
+
+class ChangeNameSerializer(ModelSerializer):
+    class Meta:
+        model = UserAccount
+        fields = ['first_name','last_name']
+
+
+

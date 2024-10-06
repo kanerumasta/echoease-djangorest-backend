@@ -16,6 +16,8 @@ APPEND_SLASH = True
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 dotenv_file = BASE_DIR / '.env.local'
+TIME_ZONE = 'Asia/Manila'
+USE_TZ = True
 
 if path.isfile(dotenv_file):
     dotenv.load_dotenv(dotenv_file)

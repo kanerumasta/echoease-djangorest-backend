@@ -163,11 +163,28 @@ class TimeSlot(models.Model):
             raise ValidationError("This time slot overlaps with an existing time slot.")
 
     class Meta:
+        ordering = ['start_time']
         unique_together = ('artist', 'start_time', 'end_time')
 
 class TimeSlotException(models.Model):
     time_slot = models.ForeignKey(TimeSlot, on_delete=models.CASCADE)
     date = models.DateField()
+
+    def __str__(self):
+        return f'{self.date}==>{self.time_slot}'
+
+
+#this will override default timeslot
+class SpecialTimeSlot(models.Model):
+    date = models.DateField()
+    artist = models.ForeignKey(Artist, on_delete=models.CASCADE)
+    start_time = models.TimeField()
+    end_time=models.TimeField()
+
+    def __str__(self) -> str:
+        return f'{self.date}-{self.artist}-{self.start_time}-{self.end_time}'
+    class Meta:
+        ordering = ['start_time']
 
 
 

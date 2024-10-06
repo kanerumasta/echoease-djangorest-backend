@@ -50,6 +50,7 @@ class UserAccount(AbstractBaseUser, PermissionsMixin):
     is_staff = models.BooleanField(default=False)
     is_superuser = models.BooleanField(default=False)
 
+
     # Roles
     Roles = (('artist', 'Artist'), ('client', 'Client'), ('admin', 'Admin'))
     role = models.CharField(choices=Roles, default='client',
@@ -97,6 +98,9 @@ class UserAccount(AbstractBaseUser, PermissionsMixin):
     def __str__(self):
         return f'{self.first_name} {self.last_name}'.title()
 
+    class Meta:
+        ordering = ['first_name','last_name']
+
 
 class Profile(models.Model):
     profile_image = models.ImageField(upload_to="images/profiles/", null=True, blank=True)
@@ -128,3 +132,6 @@ class Profile(models.Model):
 
     def __str__(self):
         return f'P-{self.user}'
+
+    class Meta:
+        ordering = ['user']

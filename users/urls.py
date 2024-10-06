@@ -7,7 +7,10 @@ from .views import (
     ProfileView,
     UserView,
     is_artist,
-    check_email
+    check_email,
+    PasswordResetView,
+    UpdateUserView
+
 )
 
 from django.urls import path, re_path
@@ -29,7 +32,7 @@ urlpatterns = [
     path('whoami/', UserView.as_view()),
     path('is-artist/',is_artist),
     path('check-email/<str:email>',check_email ),
-    path('role-pick',UserView.as_view())
-
-    
+    path('role-pick',UserView.as_view()),
+    path('change-password', PasswordResetView.as_view()),
+    path('change-name',UpdateUserView.as_view() ),
 ]
