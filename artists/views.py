@@ -9,7 +9,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated, IsAdminUser,AllowAny
 from rest_framework.exceptions import ValidationError
-from .models import (ArtistApplication, Artist, Genre, IDType, ConnectionRequest, TimeSlot, TimeSlotException, SpecialTimeSlot)
+from .models import (ArtistApplication, Artist, Genre, IDType, ConnectionRequest, PortfolioItemMedia, UnavailableDate)
 from booking.models import Booking
 from .permissions import IsArtist
 from django.utils import timezone
@@ -25,9 +25,10 @@ from .serializers import (
                             IDTypeSerializer,
                             RateSerializer,
                             ConnectionRequestSerializer,
-                            ArtistConnectionsSerializer,TimeSlotSerializer,
-                            TimeslotExceptionSerializer,
-                            SpecialTimeSlotSerializer
+                            ArtistConnectionsSerializer,
+                            PortfolioItemMediaSerializer,
+                            RecommendedArtistSerializer,
+                            UnavailableDateSerializer
                           )
 from .models import Artist, PortfolioItem, Portfolio, Rate
 
@@ -41,10 +42,20 @@ class ArtistView(APIView):
             return [AllowAny()]
         return super().get_permissions()
 
+    def patch(self, request):
+        artist_id = request.data.get('artist_id')
+        artist = get_object_or_404(Artist, id = artist_id)
+        serializer = ArtistSerializer(artist, data = request.data,partial = True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(status=status.HTTP_200_OK)
+        print(serializer.errors)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
     def post(self, request):
         data = request.data
         serializer = ArtistApplicationSerializer(data = data)
-
         try:
             if serializer.is_valid(raise_exception=True):
                 serializer.save()
@@ -75,7 +86,9 @@ class ArtistView(APIView):
             return Response(serializer.data, status = status.HTTP_200_OK)
 
 
+
 class PortfolioView(APIView):
+
     permission_classes=[AllowAny]
     def get(self, request, artist_id):
         artist = get_object_or_404(Artist, id=artist_id)
@@ -91,7 +104,6 @@ class PortfolioItemView(APIView):
     permission_classes=[IsArtist, IsAuthenticated]
 
     def post(self, request):
-        print(request.data)
         serializer = PortfolioItemSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
@@ -107,6 +119,11 @@ class PortfolioItemView(APIView):
                 serializer.save()
                 return Response(serializer.data, status = status.HTTP_200_OK)
             return Response(serializer.errors, status = status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, id):
+        portfolio_item = get_object_or_404(PortfolioItem, id=id)
+        portfolio_item.delete()
+        return Response(status=status.HTTP_200_OK)
 
 class ArtistApplicationView(APIView):
     #FOR ADMIN ONLY
@@ -165,6 +182,7 @@ class GenreView(APIView):
             return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+
 class IDTypesView(APIView):
 
     def get_permissions(self):
@@ -199,6 +217,21 @@ class RateView(APIView):
             return Response(status=status.HTTP_204_NO_CONTENT)
         print(serializer.errors)
         return Response(status=status.HTTP_400_BAD_REQUEST)
+
+    def patch(self, request):
+        rate_id = request.data.get('id')
+        rate = get_object_or_404(Rate, id = rate_id)
+        serializer = RateSerializer(rate,data = request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({'message':'success'}, status=status.HTTP_200_OK)
+        print(serializer.errors)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST )
+    def delete(self, request, id):
+        rate = get_object_or_404(Rate, id=id)
+        rate.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 
 
 class ArtistConnectionsView(APIView):
@@ -250,7 +283,13 @@ class ConnectionRequestView(APIView):
                 connection_request.accept()
                 return Response(status=status.HTTP_204_NO_CONTENT)
             if action == 'reject':
-                pass
+                connection_request.reject()
+                return Response(status=status.HTTP_204_NO_CONTENT)
+
+    def delete(self, request,id):
+        connection_request = get_object_or_404(ConnectionRequest, id=id)
+        connection_request.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class ReceivedConnectionRequestView(APIView):
@@ -274,84 +313,92 @@ class SentConnectionRequestView(APIView):
         serializer = ConnectionRequestSerializer(connection_requests, many=True)
         return Response(serializer.data, status = status.HTTP_200_OK)
 
+    # def get(self, request, id):
+    #     artist = get_object_or_404(Artist, id=id)
+    #     # 1. Unavailable dates due to bookings
+    #     unavailable_dates_from_bookings = Booking.objects.filter(
+    #         Q(artist=artist) &
+    #         Q(is_completed=False) &
+    #         ~Q(status__in=['rejected', 'cancelled', 'approved'])
+    #     ).values_list('event_date', flat=True)
+    #     # 2. Unavailable dates due to full-day exceptions or all slots being in exceptions
+    #     full_day_exceptions = DefaultTimeSlotException.objects.filter(
+    #         time_slot__artist=artist, full_day_exception=True
+    #     ).values_list('date', flat=True)
+    #     # unavailable_dates_from_slots = set()
+    #     # # Get all time slots for the artist
+    #     # all_time_slots = DefaultTimeSlot.objects.filter(artist=artist).values('date')
+    #     # # Go through each date where the artist has time slots
+    #     # for slot in all_time_slots:
+    #     #     date_obj = slot['date']
+    #     #     time_slot_exceptions = DefaultTimeSlotException.objects.filter(date=date_obj).values_list('time_slot', flat=True)
+    #     #     time_slots = DefaultTimeSlot.objects.filter(artist=artist, date=date_obj)
+    #     #     if time_slots.exists() and time_slots.count() == time_slot_exceptions.count():
+    #     #         unavailable_dates_from_slots.add(date_obj)
+    #     # Special time slots are separate, check if there are special time slots
+    #     all_dates_with_special_time_slots = SpecialTimeSlot.objects.filter(artist=artist).values_list('date', flat=True)
+    #     dates_with_no_special_slots = DefaultTimeSlot.objects.filter(
+    #         artist=artist
+    #     ).exclude(date__in=all_dates_with_special_time_slots).values_list('date', flat=True)
+    #     # unavailable_dates_from_slots.update(dates_with_no_special_slots)
+    #     # Combine the unavailable dates from both bookings and time slots/exceptions
+    #     all_unavailable_dates = set(unavailable_dates_from_bookings).union(full_day_exceptions)
+    #     return Response(list(all_unavailable_dates), status=status.HTTP_200_OK)
 
-class ArtistUnavailableDatesView(APIView):
-    def get(self, request, id):
-        artist = get_object_or_404(Artist, id=id)
-        unavailable_dates = Booking.objects.filter(Q(artist=artist) & Q(is_completed = False) &
-            ~Q(status__in=['rejected', 'cancelled']) ).values_list('event_date', flat=True)
-        return Response(list(unavailable_dates), status=status.HTTP_200_OK)
 
-class TimeSlotView(APIView):
+class PortfolioItemMediaView(APIView):
     def post(self, request):
-        serializer = TimeSlotSerializer(data = request.data)
+        serializer = PortfolioItemMediaSerializer(data = request.data)
         if serializer.is_valid():
             serializer.save()
-            return Response({'message':'add time slot successful'},status=status.HTTP_200_OK)
-        print(serializer.errors)
-        return Response({'error':'serializer errors'}, status=status.HTTP_400_BAD_REQUEST)
-
-    def get(self, request, artist_id):
-        date = request.GET.get('date', None)
-        artist = get_object_or_404(Artist, id=artist_id)
-
-        if date:
-            try:
-                date_obj = timezone.datetime.strptime(date, '%Y-%m-%d').date()
-            except ValueError:
-                return Response({'error': 'Invalid date format. Use YYYY-MM-DD.'}, status=status.HTTP_400_BAD_REQUEST)
-
-            #Check if there is a special time slot for this date
-            special_time_slots = SpecialTimeSlot.objects.filter(artist=artist, date=date_obj)
-            print(special_time_slots)
-            if special_time_slots.exists():
-                serializer = SpecialTimeSlotSerializer(special_time_slots, many=True)
-                return Response(serializer.data, status=status.HTTP_200_OK)
-
-            # Get all exceptions for the specified date
-            time_slot_exceptions = TimeSlotException.objects.filter(date=date_obj).values_list('time_slot', flat=True)
-
-            # Get all time slots for the artist
-            time_slots = TimeSlot.objects.filter(artist=artist)
-
-            #filter out past time slots if date is now
-            if date_obj == timezone.now().date():
-                current_time = timezone.now().today().time()
-                time_slots = time_slots.exclude(end_time__lte=current_time)
-
-            # Filter out time slots that are in exceptions
-            available_time_slots = time_slots.exclude(
-                Q(id__in=time_slot_exceptions)  # Exclude time slots that are in the exceptions
-            )
-
-            # Serialize the available time slots
-            serializer = TimeSlotSerializer(available_time_slots, many=True)
-            return Response(serializer.data, status=status.HTTP_200_OK)
-
-        # If no date is provided, return all time slots for the artist
-        time_slots = TimeSlot.objects.filter(artist=artist)
-        serializer = TimeSlotSerializer(time_slots, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
-
-
-class TimeslotExceptionView(APIView):
-    def post(self, request):
-        serializer = TimeslotExceptionSerializer(data = request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response({'message':'successful'}, status=status.HTTP_201_CREATED)
+            return Response(status=status.HTTP_204_NO_CONTENT)
         print(serializer.errors)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+    def delete(self, request, id):
+        media = get_object_or_404(PortfolioItemMedia, id=id)
+        media.delete()
+        return Response({'message':'media deleted successfully'}, status=status.HTTP_200_OK)
 
-class SpecialTimeslotView(APIView):
-    def post(self, request):
-        serializer = SpecialTimeSlotSerializer(data = request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        print(serializer.errors)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+# class ArtistUnavailableDatesView(APIView):
+#     def post(self, request):
+#         date = request.data.get('date','')
+#         artist = get_object_or_404(Artist, user = request.user)
+#         try:
+#             date_obj = timezone.datetime.strptime(date, '%Y-%m-%d').date()
+#         except ValueError:
+#             return Response({'error':'invalid date'}, status=status.HTTP_400_BAD_REQUEST)
+#         try:
+#             unavailable = UnavailableDate.objects.create(date=date_obj, artist = artist)
+#             unavailable.save()
+#             return Response(status=status.HTTP_201_CREATED)
+#         except Exception as e:
+#             return Response({'message':'error creating unavailable date'})
+
+#     def delete(self, request,id):
+#         unavailable_date = get_object_or_404(UnavailableDate, id=id)
+#         unavailable_date.delete()
+#         return Response(status=status.HTTP_200_OK)
+
+
+#     def get(self, request, artist_id=None, id=None):
+#         if id:
+#             unavailable_date = get_object_or_404(UnavailableDate, id=id)
+#             serializer = UnavailableDateSerializer(unavailable_date)
+#             return Response(serializer.data, status=status.HTTP_200_OK)
+
+#         if artist_id:
+#             artist = get_object_or_404(Artist , id=artist_id)
+#             unavailable_dates = UnavailableDate.objects.filter(artist = artist)
+#             serializer = UnavailableDateSerializer(unavailable_dates, many=True)
+#             return Response(serializer.data, status=status.HTTP_200_OK)
+
+#         artist = get_object_or_404(Artist, user = request.user)
+#         unavailable_dates = UnavailableDate.objects.filter(artist = artist)
+#         serializer = UnavailableDateSerializer(unavailable_dates, many=True)
+#         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 
@@ -374,3 +421,121 @@ def unfollow(request):
         artist.followers.remove(user)
         return Response(status=status.HTTP_204_NO_CONTENT)
     return Response(status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['GET'])
+def get_recommended_artists(request):
+    artist = get_object_or_404(Artist, user=request.user)
+
+    # Get artists who already have a connection request (pending or accepted)
+    connection_requests = ConnectionRequest.objects.filter(
+        Q(sender=artist) | Q(receiver=artist),
+        status__in=['pending', 'accepted','rejected']
+    ).values_list('receiver_id', 'sender_id')
+
+    # Flatten the result to get a list of artist IDs
+    artist_ids_with_requests = set([item for sublist in connection_requests for item in sublist])
+
+    # Query artists by the same genre, excluding current artist, existing connections, and those with a connection request
+    artists_by_genre = Artist.objects.filter(
+        genres__in=artist.genres.all(),
+        status='active'
+    ).exclude(
+        id=artist.id
+    ).exclude(
+        connections=artist
+    ).exclude(
+        id__in=artist_ids_with_requests
+    ).distinct()
+
+    # Query artists with mutual connections, excluding current artist, existing connections, and those with a connection request
+    artists_by_mutual = Artist.objects.filter(
+        connections__in=artist.connections.all(),
+        status='active'
+    ).exclude(
+        id=artist.id
+    ).exclude(
+        connections=artist
+    ).exclude(
+        id__in=artist_ids_with_requests
+    ).distinct()
+
+    # Combine both queries using union
+    recommended_artists = artists_by_genre.union(artists_by_mutual)
+
+    # Serialize the recommended artists
+    serializer = RecommendedArtistSerializer(recommended_artists, many=True, context={'current_artist': artist})
+
+    return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+@api_view(['DELETE'])
+def remove_genre(request, id):
+    artist = get_object_or_404(Artist, user=request.user)
+    genre = get_object_or_404(Genre, id=id)
+    artist.genres.remove(genre)
+    return Response(status=status.HTTP_204_NO_CONTENT)
+
+@api_view(['POST'])
+def add_genre(request, id):
+    artist = get_object_or_404(Artist, user=request.user)
+    genre = get_object_or_404(Genre, id=id)
+    artist.genres.add(genre)
+    return Response(status=status.HTTP_204_NO_CONTENT)
+
+@api_view(['POST'])
+def set_date_unavailable(request):
+    date = request.data.get('date')
+    try:
+        date_obj = timezone.datetime.strptime(date,'%Y-%m-%d').date()
+    except ValueError:
+        return Response({'error': 'Invalid date format. Use YYYY-MM-DD.'}, status=status.HTTP_400_BAD_REQUEST)
+
+
+# @api_view(['POST'])
+# def reset_date_to_default_time_slots(request, date):
+#     artist = get_object_or_404(Artist, user = request.user)
+#     try:
+#         date_obj = timezone.datetime.strptime(date, '%Y-%m-%d')
+#     except ValueError:
+#         return Response({'error':'invalid date format'}, status=status.HTTP_400_BAD_REQUEST)
+
+#     special_time_slots = SpecialTimeSlot.objects.filter(artist=artist, date=date)
+#     special_time_slots.delete()
+#     return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+# @api_view(['GET'])
+# def get_artist_timeslots(request, artist_id):
+#     artist = get_object_or_404(Artist, id = artist_id)
+#     date = request.query_params.get('date')
+
+#     #validate DATE
+#     if not date:
+#         return Response({'error':'date is required as query param'})
+#     try:
+#         timezone.datetime.strptime(date,'%Y-%m-%d').date()
+#     except ValueError:
+#         return Response({'error':'invalid date format'},status=status.HTTP_400_BAD_REQUEST)
+
+#     #check if DATE is unavailable
+#     is_unavailable_date = UnavailableDate.objects.filter(artist=artist, date=date).exists()
+#     if is_unavailable_date:
+#         return Response({'error':'this date is unavaible'},status=status.HTTP_400_BAD_REQUEST)
+
+#     #CHECK IF THERE IS ARE SPECIAL TIMESLOTS FOR THIS DATE
+#     specials = SpecialTimeSlot.objects.filter(artist=artist, date=date)
+#     if specials.exists():
+#         serializer = SpecialTimeSlotSerializer(specials, many=True)
+#         return Response({'is_special':True, "data" : serializer.data}, status=status.HTTP_200_OK)
+
+#     #get all exception time slots for this DATE
+#     time_slot_exceptions = DefaultTimeSlotException.objects.filter(date=date).values_list('time_slot_id',flat=True)
+
+#     #GET all default time slots for this ARTIST
+#     time_slots = DefaultTimeSlot.objects.filter(artist=artist)
+
+#     # Filter out time slots that are in exceptions
+#     filtered_time_slots = time_slots.exclude(id__in=time_slot_exceptions)
+
+#     serializer = DefaultTimeSlotSerializer(filtered_time_slots, many=True)
+#     return Response({'is_special':False, "data" : serializer.data}, status=status.HTTP_200_OK)

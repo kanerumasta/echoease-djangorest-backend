@@ -14,7 +14,11 @@ class ProfileSerializer(ModelSerializer):
         representation =  super().to_representation(instance)
         representation['complete_address'] = f'{instance.street}, {instance.brgy}, {instance.municipality}, {instance.province}, {instance.country}'
         representation['phone'] = f'+63{instance.phone}'
-        representation['dob'] = instance.dob.strftime('%B, %d, %Y')
+        if instance.dob:
+            representation['dob'] = instance.dob.strftime('%B, %d, %Y')
+        else:
+            representation['dob'] = None
+
         return representation
 
 class UserAccountSerializer (ModelSerializer):
@@ -52,6 +56,3 @@ class ChangeNameSerializer(ModelSerializer):
     class Meta:
         model = UserAccount
         fields = ['first_name','last_name']
-
-
-

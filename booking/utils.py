@@ -28,7 +28,7 @@ def create_booking_confirmation_notification(booking_id):
 
         notification_type = 'booking_confirmation'
         title = 'Booking Confirmed!'
-        description = f'Your booking for an event on {booking.event_date} with {booking.artist.user.first_name} {booking.artist.user.last_name} has been confirmed.'
+        description = f'Your booking for an event on {booking.event_date} with {booking.artist.user.first_name} {booking.artist.user.last_name} has been confirmed. Mangayo mi ug downpayment lods.'
 
         Notification.objects.create(
             user=booking.client,

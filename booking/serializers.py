@@ -13,7 +13,6 @@ class RateSerializer(serializers.ModelSerializer):
 
 
 class BookingSerializer(serializers.ModelSerializer):
-    event_date = serializers.DateField(input_formats=["%m/%d/%Y"])
     client = UserAccountSerializer(read_only=True)
     artist = serializers.PrimaryKeyRelatedField(
         queryset=Artist.objects.all(),
@@ -33,7 +32,10 @@ class BookingSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         representation = super().to_representation(instance)
         representation['formatted_event_date'] = instance.event_date.strftime('%B %d, %Y')
-        representation['formatted_event_time'] = instance.event_time.strftime('%I:%M %p')
+        representation['formatted_start_time'] = instance.start_time.strftime('%I:%M %p')
+        representation['formatted_end_time'] = instance.end_time.strftime('%I:%M %p')
+        representation['timeslot'] = f'{instance.start_time.strftime('%I:%M %p')} - {instance.end_time.strftime('%I:%M %p')}'
         representation['artist'] = representation.pop('artist_details')
         representation['rate'] = representation.pop('rate_details')
+        representation['location'] = f'{instance.street}, {instance.barangay}, {instance.municipality}, {instance.province}, Philippines @{instance.landmark}'
         return representation

@@ -11,8 +11,8 @@ from .models import (
     IDType,
     Rate,
     ConnectionRequest,
-    TimeSlot,TimeSlotException,
-    SpecialTimeSlot
+    PortfolioItemMedia,
+    UnavailableDate
 )
 
 
@@ -93,6 +93,5 @@ admin.site.register(PortfolioItem,GeneralAdmin)
 admin.site.register(IDType,GeneralAdmin)
 admin.site.register(Rate, GeneralAdmin)
 admin.site.register(ConnectionRequest, GeneralAdmin)
-admin.site.register(TimeSlot, GeneralAdmin)
-admin.site.register(TimeSlotException, GeneralAdmin)
-admin.site.register(SpecialTimeSlot, GeneralAdmin)
+admin.site.register(PortfolioItemMedia, GeneralAdmin)
+admin.site.register(UnavailableDate, GeneralAdmin)

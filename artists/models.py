@@ -124,68 +124,48 @@ class PortfolioItem(models.Model):
     ]
 
 
-    portfolio = models.ForeignKey(Portfolio, on_delete=models.CASCADE, related_name="items", null=True)
-    title = models.CharField(max_length = 255, null=True, blank=True)
+    portfolio = models.ForeignKey(Portfolio, on_delete=models.CASCADE, related_name="items")
+    title = models.CharField(max_length = 255)
     description = models.CharField(max_length = 255, null=True, blank=True)
     group = models.CharField(max_length=50,default="portfolio",choices=GROUPS,null=True, blank=True)
 
-    #LIMIT TWO VIDEOS AND 5 IMAGES
-    video1 = models.FileField(upload_to="videos/",null=True, blank=True)
-    video2 = models.FileField(upload_to="videos/",null=True, blank=True)
+    def __str__(self) -> str:
+        return self.title or 'Unknown Portfolio Item'
 
-    image1 = models.ImageField(upload_to="images/", null=True, blank=True)
-    image2 = models.ImageField(upload_to="images/", null=True, blank=True)
-    image3 = models.ImageField(upload_to="images/", null=True, blank=True)
-    image4 = models.ImageField(upload_to="images/", null=True, blank=True)
-    image5 = models.ImageField(upload_to="images/", null=True, blank=True)
 
+class PortfolioItemMedia(models.Model):
+    MEDIA_TYPES = [
+        ('video', 'Video'),
+        ('image', 'Image'),
+    ]
+
+    portfolio_item = models.ForeignKey(PortfolioItem, on_delete=models.CASCADE, related_name="medias")
+    media_type = models.CharField(max_length=50, choices=MEDIA_TYPES)
+    file = models.FileField(upload_to="portfolio_item_medias/", null=False, blank=False)
+
+    def __str__(self):
+        return f'{self.media_type.capitalize()} for {self.portfolio_item.title}'
 
 class Rate(models.Model):
     artist = models.ForeignKey(Artist, on_delete=models.CASCADE, related_name='artist_rates', null=True, blank=True)
     artist_application = models.ForeignKey(ArtistApplication, on_delete=models.CASCADE, related_name='rates', null=True, blank=True)
     name = models.CharField(max_length=255)
+    description = models.TextField(null=True, blank=True)
     amount = models.PositiveIntegerField()
 
     def __str__(self):
         return f'{self.artist}-{self.name}-{self.amount}'
 
-class TimeSlot(models.Model):
-    artist = models.ForeignKey(Artist, on_delete=models.CASCADE, related_name='time_slots')
-    start_time = models.TimeField()
-    end_time = models.TimeField()
 
-    def __str__(self):
-        return f"{self.artist}: {self.start_time} - {self.end_time}"
-
-    def clean(self):
-        # Check for overlapping time slots
-        if TimeSlot.objects.filter(artist=self.artist, start_time__lt=self.end_time, end_time__gt=self.start_time).exists():
-            raise ValidationError("This time slot overlaps with an existing time slot.")
-
-    class Meta:
-        ordering = ['start_time']
-        unique_together = ('artist', 'start_time', 'end_time')
-
-class TimeSlotException(models.Model):
-    time_slot = models.ForeignKey(TimeSlot, on_delete=models.CASCADE)
-    date = models.DateField()
-
-    def __str__(self):
-        return f'{self.date}==>{self.time_slot}'
-
-
-#this will override default timeslot
-class SpecialTimeSlot(models.Model):
-    date = models.DateField()
+class UnavailableDate(models.Model):
     artist = models.ForeignKey(Artist, on_delete=models.CASCADE)
-    start_time = models.TimeField()
-    end_time=models.TimeField()
+    date = models.DateField()
+
+    #this is true when made by setting the day directly / manual creating
+    # is_made = models.BooleanField(default=False)
 
     def __str__(self) -> str:
-        return f'{self.date}-{self.artist}-{self.start_time}-{self.end_time}'
-    class Meta:
-        ordering = ['start_time']
-
+        return f'{self.artist} - {self.date}'
 
 
 

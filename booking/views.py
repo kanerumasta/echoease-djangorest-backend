@@ -18,6 +18,7 @@ from .utils import (
 
 class BookingView(views.APIView):
     def post(self, request):
+        print(request.data)
         serializer = BookingSerializer(data = request.data)
         try:
             if serializer.is_valid():
@@ -39,11 +40,12 @@ class BookingView(views.APIView):
             serializer = BookingSerializer(booking)
             return Response(serializer.data, status=status.HTTP_200_OK)
         status_filter = request.query_params.get('status')
+        sort = request.query_params.get('sort')
         bookings = Booking.objects.filter(Q(client = request.user)|Q(artist__user = request.user))
         if status_filter:
             bookings = bookings.filter(status = status_filter)
-            serializer = BookingSerializer(bookings,many=True)
-            return Response(serializer.data, status=status.HTTP_200_OK)
+        if sort == 'date':
+            bookings = bookings.order_by('event_date','start_time')
         serializer = BookingSerializer(bookings, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 

@@ -4,25 +4,21 @@ from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from decimal import Decimal
 from artists.models  import Rate
-
-
 User = get_user_model()
 
 class Booking(models.Model):
 
     artist = models.ForeignKey(Artist, on_delete=models.CASCADE, verbose_name='Echoee')
     client = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True, verbose_name='Echoer')
-
-
+    amount = models.DecimalField(max_digits=10, decimal_places=2,null=True, blank=True)
     event_name = models.CharField(max_length=100)
     event_date = models.DateField()
-    event_time = models.TimeField()
+    start_time = models.TimeField()
+    end_time = models.TimeField()
     created_at = models.DateField(auto_now_add=True)
     updated_at = models.DateField(auto_now=True)
     is_completed = models.BooleanField(default=False)
-
     rate = models.ForeignKey(Rate, on_delete=models.CASCADE, null=True, blank=True)
-
     province = models.CharField(max_length=255, null=True, blank=True)
     municipality = models.CharField(max_length=255, null=True, blank=True)
     barangay = models.CharField(max_length=255, null=True, blank=True)
@@ -31,9 +27,11 @@ class Booking(models.Model):
 
 
 
+
     status_choices = [
     ('pending','Pending'),
     ('cancelled','Cancelled'),
+    ('awaiting_downpayment','Wating for Downpayment'),
     ('rejected', 'Rejected'),
     ('approved', 'Approved'),
     ('completed','Completed')
@@ -42,12 +40,22 @@ class Booking(models.Model):
     status = models.CharField(max_length=20, choices=status_choices, default='pending')
 
 
+    #approve here only sets statust to awaiting downpayment
     def approve(self):
-        self.status = 'approved'
+        self.status = 'awaiting_downpayment'
         self.save()
 
     def reject(self):
         self.status = 'rejected'
+        self.save()
+
+    #this sets the booking as ready
+    def downpayment_paid(self):
+        self.status = 'approved'
+        #create timeslot exception for this time slot
+
+
+
         self.save()
 
     def cancel(self):
@@ -92,13 +100,29 @@ class Booking(models.Model):
 
     def clean(self) -> None:
         super().clean()
+        if self.start_time >= self.end_time:
+            raise ValidationError("The start time must be before the end time.")
+
         if self.artist.user == self.client:
             raise ValidationError("Client user should not book it's own artist profile")
+
+      # Check for conflicting bookings
+        overlapping_bookings = Booking.objects.filter(
+            artist=self.artist,
+            event_date=self.event_date,
+            status__in = ['approved','completed','awaiting_downpayment']
+
+        ).exclude(id=self.id)  # Exclude current booking if updating
+
+        for booking in overlapping_bookings:
+            if self.start_time < booking.end_time and self.end_time > booking.start_time:
+                raise ValidationError("The artist is already booked for this time slot.")
 
 
     def save(self, *args, **kwargs):
         self.clean()
+        self.amount = self.rate.amount
         super().save(*args, **kwargs)
 
     class Meta:
-        ordering = ['-event_date']
+        ordering = ['-created_at']

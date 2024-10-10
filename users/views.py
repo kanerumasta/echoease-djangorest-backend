@@ -140,6 +140,7 @@ class ProfileView(APIView):
             return Response(status = status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def patch(self, request):
+        print(request.data)
         try:
             user = request.user
             profile = get_object_or_404(Profile, user = user)

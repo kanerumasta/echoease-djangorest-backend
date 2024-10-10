@@ -33,3 +33,12 @@ class Payout(models.Model):
     payment = models.ForeignKey(Payment, on_delete=models.CASCADE)
     app_commission = models.DecimalField(max_digits=10,decimal_places=1,null=True)
     payout_date = models.DateTimeField(auto_now_add=True)
+
+
+class DownPayment(models.Model):
+    booking = models.ForeignKey(Booking, on_delete=models.CASCADE)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    created_at = models.DateTimeField(auto_now_add=True)
+    gateway = models.CharField(max_length=50) #gcash/paypal/paymaya
+    gateway_fee = models.DecimalField(max_digits=10, decimal_places=2)
+    
