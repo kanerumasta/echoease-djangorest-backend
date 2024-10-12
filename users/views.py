@@ -18,7 +18,6 @@ import pytz
 from rest_framework.permissions import AllowAny
 
 
-
 class CustomProviderAuthView(ProviderAuthView):
     def post(self, request, *args, **kwargs):
         response = super().post(request, *args, **kwargs)
@@ -155,7 +154,14 @@ class ProfileView(APIView):
             return Response({'message':'error occured'}, status = status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class UserView(APIView):
-    def get(self, request):
+    def get(self, request, id = None):
+        if id:
+            user = get_object_or_404(UserAccount, id=id)
+            if user.is_staff or user.is_superuser or not user.is_active:
+                return Response(status=status.HTTP_404_NOT_FOUND)
+            serializer = UserAccountSerializer(user)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
         try:
             user = UserAccount.objects.get(pk = request.user.id)
             print('User',user)

@@ -45,11 +45,11 @@ class ArtistApplicationAdmin(admin.ModelAdmin):
                         rate.artist = artist
                         rate.save()
 
-
                     application.status = 'approved'
                     application.save()
                     application.user.role = 'artist'
                     application.user.save()
+                    
                 except Exception as e:
                     print(e)
                     print('Failed approving artist application')

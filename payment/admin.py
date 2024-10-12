@@ -1,7 +1,9 @@
 from django.contrib import admin
-from .models import Payment, Payout
+from .models import Payment, DownPayment, Payout
 
-# Register your models here.
+
 
 
 admin.site.register(Payment)
+admin.site.register(DownPayment)
+admin.site.register(Payout)

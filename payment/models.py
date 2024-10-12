@@ -6,39 +6,47 @@ from decimal import Decimal
 
 USER =  settings.AUTH_USER_MODEL
 class Payment(models.Model):
-    reference_id = models.CharField(max_length=50) #Token in paypal
-    booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name="payments")
+    payment_intent_id = models.CharField(max_length=50, unique=True) #Token in paypal
+    booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name="payment")
     client  = models.ForeignKey(USER, on_delete=models.CASCADE)
-    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    gross_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    net_amount = models.DecimalField(max_digits=10, decimal_places=2)
     payment_date = models.DateTimeField(auto_now_add=True)
     processing_fee = models.DecimalField(max_digits=10, decimal_places=2) #Payment service(E.g Paypal) processing fee
     payment_method = models.CharField(max_length=50, null=True, blank=True)
+    payment_status = models.CharField(max_length=50,default='pending')
+    payer_email = models.CharField(max_length=50, null=True, blank=True)
+    payer_name = models.CharField(max_length=50, null=True, blank=True)
 
-    def save(self, *args, **kwargs):
-        self.app_commission = self.amount - Decimal('0.12') #12% COMMISSION CHANGEABLE
-        super().save(*args, **kwargs)
-
-    @property
-    def net_amount(self):
-        return self.amount - self.processing_fee
 
     def __str__(self):
-        return f'Payment {self.pk} refid:{self.reference_id}'
+        return f'Payment {self.pk} refid:{self.payment_intent_id}'
 
 
 
 class Payout(models.Model):
-    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    payment_intent_id = models.CharField(max_length=255, unique=True)
+    net_amount = models.DecimalField(max_digits=10, decimal_places=2)
     artist = models.ForeignKey(Artist, on_delete=models.CASCADE)
-    payment = models.ForeignKey(Payment, on_delete=models.CASCADE)
+    booking = models.ForeignKey(Booking, on_delete=models.CASCADE,related_name='payout')
     app_commission = models.DecimalField(max_digits=10,decimal_places=1,null=True)
+    processing_fee = models.DecimalField(max_digits=10,decimal_places=1,null=True)
     payout_date = models.DateTimeField(auto_now_add=True)
+    payment_method = models.CharField(max_length=50)
+    payment_status = models.CharField(max_length=50,default='pending')
 
 
 class DownPayment(models.Model):
-    booking = models.ForeignKey(Booking, on_delete=models.CASCADE)
+    payment_intent_id = models.CharField(max_length=255, unique=True)
+    booking = models.ForeignKey(Booking, on_delete=models.CASCADE,related_name='down_payment')
     amount = models.DecimalField(max_digits=10, decimal_places=2)
-    created_at = models.DateTimeField(auto_now_add=True)
-    gateway = models.CharField(max_length=50) #gcash/paypal/paymaya
-    gateway_fee = models.DecimalField(max_digits=10, decimal_places=2)
-    
+    net_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    payment_date = models.DateTimeField(auto_now_add=True)
+    payment_method = models.CharField(max_length=50) #gcash/paypal/paymaya
+    processing_fee = models.DecimalField(max_digits=10, decimal_places=2)
+    payment_status = models.CharField(max_length=50,default='pending')
+    payer_email = models.CharField(max_length=50, null=True, blank=True)
+    payer_name = models.CharField(max_length=50, null=True, blank=True)
+
+
+# class Payment

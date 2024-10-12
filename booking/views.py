@@ -15,6 +15,8 @@ from .utils import (
     create_booking_rejected_notification,
     create_booking_cancelled_notification
 )
+from django.utils import timezone
+import datetime
 
 class BookingView(views.APIView):
     def post(self, request):
@@ -78,6 +80,29 @@ class BookingCancelView(views.APIView):
         booking.cancel()
         create_booking_cancelled_notification(id)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+class PendingPaymentsView(views.APIView):
+    def get(self, request):
+        bookings = Booking.objects.filter(
+            Q(artist__user=request.user) | Q(client=request.user),
+              status='approved',
+                event_date__lt=datetime.datetime.now().date(),
+                payment__isnull=True
+             )
+        serializer = BookingSerializer(bookings, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+class UpcomingEventsView(views.APIView):
+    def get(self, request):
+        print()
+        bookings = Booking.objects.filter(
+            Q(artist__user=request.user) | Q(client=request.user),
+              status='approved',
+            event_date__gt=datetime.datetime.now().date()
+             ).order_by('event_date','start_time')
+        serializer = BookingSerializer(bookings, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
 
 class BookingHistoryView(views.APIView):
     pass

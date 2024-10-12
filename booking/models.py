@@ -106,18 +106,6 @@ class Booking(models.Model):
         if self.artist.user == self.client:
             raise ValidationError("Client user should not book it's own artist profile")
 
-      # Check for conflicting bookings
-        overlapping_bookings = Booking.objects.filter(
-            artist=self.artist,
-            event_date=self.event_date,
-            status__in = ['approved','completed','awaiting_downpayment']
-
-        ).exclude(id=self.id)  # Exclude current booking if updating
-
-        for booking in overlapping_bookings:
-            if self.start_time < booking.end_time and self.end_time > booking.start_time:
-                raise ValidationError("The artist is already booked for this time slot.")
-
 
     def save(self, *args, **kwargs):
         self.clean()

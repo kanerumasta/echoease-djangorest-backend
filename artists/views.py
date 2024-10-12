@@ -128,7 +128,6 @@ class PortfolioItemView(APIView):
 class ArtistApplicationView(APIView):
     #FOR ADMIN ONLY
     def get(self, request):
-
         #search params to only check if current user has artist application already
         check = request.GET.get('check','False').lower() == 'true'
         if check:
@@ -144,7 +143,6 @@ class ArtistApplicationView(APIView):
         except Exception as e:
             print(e)
             return Response(status=status.HTTP_400_BAD_REQUEST)
-
 
     def post(self, request):
         #check user is verified here
@@ -163,6 +161,16 @@ class ArtistApplicationView(APIView):
         except Exception as e:
             print(e)
             return Response(status = status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def patch(self, request, id):
+            user = request.user
+            application = get_object_or_404(ArtistApplication, id=id)
+            serializer = ArtistApplicationSerializer(application, data = request.data, partial = True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(status=status.HTTP_204_NO_CONTENT)
+            return Response({'error':'uploading video failed'},status=status.HTTP_400_BAD_REQUEST)
+
 
 class GenreView(APIView):
     def get(self, request, id=None):
@@ -362,43 +370,43 @@ class PortfolioItemMediaView(APIView):
 
 
 
-# class ArtistUnavailableDatesView(APIView):
-#     def post(self, request):
-#         date = request.data.get('date','')
-#         artist = get_object_or_404(Artist, user = request.user)
-#         try:
-#             date_obj = timezone.datetime.strptime(date, '%Y-%m-%d').date()
-#         except ValueError:
-#             return Response({'error':'invalid date'}, status=status.HTTP_400_BAD_REQUEST)
-#         try:
-#             unavailable = UnavailableDate.objects.create(date=date_obj, artist = artist)
-#             unavailable.save()
-#             return Response(status=status.HTTP_201_CREATED)
-#         except Exception as e:
-#             return Response({'message':'error creating unavailable date'})
+class ArtistUnavailableDatesView(APIView):
+    def post(self, request):
+        date = request.data.get('date','')
+        artist = get_object_or_404(Artist, user = request.user)
+        try:
+            date_obj = timezone.datetime.strptime(date, '%Y-%m-%d').date()
+        except ValueError:
+            return Response({'error':'invalid date'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            unavailable = UnavailableDate.objects.create(date=date_obj, artist = artist)
+            unavailable.save()
+            return Response(status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response({'message':'error creating unavailable date'})
 
-#     def delete(self, request,id):
-#         unavailable_date = get_object_or_404(UnavailableDate, id=id)
-#         unavailable_date.delete()
-#         return Response(status=status.HTTP_200_OK)
+    def delete(self, request,id):
+        unavailable_date = get_object_or_404(UnavailableDate, id=id)
+        unavailable_date.delete()
+        return Response(status=status.HTTP_200_OK)
 
 
-#     def get(self, request, artist_id=None, id=None):
-#         if id:
-#             unavailable_date = get_object_or_404(UnavailableDate, id=id)
-#             serializer = UnavailableDateSerializer(unavailable_date)
-#             return Response(serializer.data, status=status.HTTP_200_OK)
+    def get(self, request, artist_id=None, id=None):
+        if id:
+            unavailable_date = get_object_or_404(UnavailableDate, id=id)
+            serializer = UnavailableDateSerializer(unavailable_date)
+            return Response(serializer.data, status=status.HTTP_200_OK)
 
-#         if artist_id:
-#             artist = get_object_or_404(Artist , id=artist_id)
-#             unavailable_dates = UnavailableDate.objects.filter(artist = artist)
-#             serializer = UnavailableDateSerializer(unavailable_dates, many=True)
-#             return Response(serializer.data, status=status.HTTP_200_OK)
+        if artist_id:
+            artist = get_object_or_404(Artist , id=artist_id)
+            unavailable_dates = UnavailableDate.objects.filter(artist = artist)
+            serializer = UnavailableDateSerializer(unavailable_dates, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
 
-#         artist = get_object_or_404(Artist, user = request.user)
-#         unavailable_dates = UnavailableDate.objects.filter(artist = artist)
-#         serializer = UnavailableDateSerializer(unavailable_dates, many=True)
-#         return Response(serializer.data, status=status.HTTP_200_OK)
+        artist = get_object_or_404(Artist, user = request.user)
+        unavailable_dates = UnavailableDate.objects.filter(artist = artist)
+        serializer = UnavailableDateSerializer(unavailable_dates, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 
@@ -489,53 +497,3 @@ def set_date_unavailable(request):
         date_obj = timezone.datetime.strptime(date,'%Y-%m-%d').date()
     except ValueError:
         return Response({'error': 'Invalid date format. Use YYYY-MM-DD.'}, status=status.HTTP_400_BAD_REQUEST)
-
-
-# @api_view(['POST'])
-# def reset_date_to_default_time_slots(request, date):
-#     artist = get_object_or_404(Artist, user = request.user)
-#     try:
-#         date_obj = timezone.datetime.strptime(date, '%Y-%m-%d')
-#     except ValueError:
-#         return Response({'error':'invalid date format'}, status=status.HTTP_400_BAD_REQUEST)
-
-#     special_time_slots = SpecialTimeSlot.objects.filter(artist=artist, date=date)
-#     special_time_slots.delete()
-#     return Response(status=status.HTTP_204_NO_CONTENT)
-
-
-# @api_view(['GET'])
-# def get_artist_timeslots(request, artist_id):
-#     artist = get_object_or_404(Artist, id = artist_id)
-#     date = request.query_params.get('date')
-
-#     #validate DATE
-#     if not date:
-#         return Response({'error':'date is required as query param'})
-#     try:
-#         timezone.datetime.strptime(date,'%Y-%m-%d').date()
-#     except ValueError:
-#         return Response({'error':'invalid date format'},status=status.HTTP_400_BAD_REQUEST)
-
-#     #check if DATE is unavailable
-#     is_unavailable_date = UnavailableDate.objects.filter(artist=artist, date=date).exists()
-#     if is_unavailable_date:
-#         return Response({'error':'this date is unavaible'},status=status.HTTP_400_BAD_REQUEST)
-
-#     #CHECK IF THERE IS ARE SPECIAL TIMESLOTS FOR THIS DATE
-#     specials = SpecialTimeSlot.objects.filter(artist=artist, date=date)
-#     if specials.exists():
-#         serializer = SpecialTimeSlotSerializer(specials, many=True)
-#         return Response({'is_special':True, "data" : serializer.data}, status=status.HTTP_200_OK)
-
-#     #get all exception time slots for this DATE
-#     time_slot_exceptions = DefaultTimeSlotException.objects.filter(date=date).values_list('time_slot_id',flat=True)
-
-#     #GET all default time slots for this ARTIST
-#     time_slots = DefaultTimeSlot.objects.filter(artist=artist)
-
-#     # Filter out time slots that are in exceptions
-#     filtered_time_slots = time_slots.exclude(id__in=time_slot_exceptions)
-
-#     serializer = DefaultTimeSlotSerializer(filtered_time_slots, many=True)
-#     return Response({'is_special':False, "data" : serializer.data}, status=status.HTTP_200_OK)

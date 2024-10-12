@@ -26,6 +26,7 @@ urlpatterns = [
 
     #######################################################
 
+    path('users/<int:id>', UserView.as_view()),
     path('profile/', ProfileView.as_view()),
     path('profile/<int:pk>', ProfileView.as_view()),
     path('profile/change-image',ProfileView.as_view()),

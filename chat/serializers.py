@@ -6,7 +6,7 @@ from users.serializers import UserAccountSerializer
 User = settings.AUTH_USER_MODEL
 
 class MessageSerializer(serializers.ModelSerializer):
-    
+
     author = serializers.SerializerMethodField()
     class Meta:
         model = Message
@@ -23,6 +23,21 @@ class ConversationSerializer(serializers.ModelSerializer):
         model = Conversation
         fields = ['code', 'participants']
 
+    def to_representation(self, instance):
+        rep = super().to_representation(instance)
+        request = self.context.get('request')
+
+        # Assuming you have access to the current user from the request
+        current_user = request.user
+
+        # Filter out the current user from the participants to find the partner
+        partner = None
+        participants = rep.get('participants', [])
+        if len(participants) > 1:
+            partner = next((p for p in participants if p['email'] != current_user.email), None)
+
+        rep['partner'] = partner
+        return rep
 
 class ConversationMessagesSerializer(serializers.ModelSerializer):
     messages = MessageSerializer(many=True, read_only=True)
@@ -37,9 +52,3 @@ class CreateConversationSerializer(serializers.ModelSerializer):
 
 # class CreateConversationSerializer(serializers.Serializer):
 #     email = serializers.EmailField()
-    
-    
-
-
-        
-
