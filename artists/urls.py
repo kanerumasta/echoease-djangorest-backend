@@ -14,7 +14,6 @@ from .views import (
     ArtistConnectionsView,
     SentConnectionRequestView,
     ReceivedConnectionRequestView,
-    ArtistUnavailableDatesView,
     # DefaultTimeSlotView,
     # TimeslotExceptionView,
     # SpecialTimeslotView,
@@ -60,9 +59,9 @@ urlpatterns = [
     path('get-recommended-artists', get_recommended_artists),
 
 
-    path('<int:artist_id>/unavailable-dates',ArtistUnavailableDatesView.as_view()),
-    path('unavailable-dates',ArtistUnavailableDatesView.as_view()),
-    path('unavailable-dates/<int:id>',ArtistUnavailableDatesView.as_view()),
+    # path('<int:artist_id>/unavailable-dates',ArtistUnavailableDatesView.as_view()),
+    # path('unavailable-dates',ArtistUnavailableDatesView.as_view()),
+    # path('unavailable-dates/<int:id>',ArtistUnavailableDatesView.as_view()),
     # path('my-default-time-slots', DefaultTimeSlotView.as_view()),
     # path('<int:artist_id>/time-slots', get_artist_timeslots),
     # path('time-slot-exceptions',TimeslotExceptionView.as_view()),

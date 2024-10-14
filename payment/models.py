@@ -35,6 +35,8 @@ class Payout(models.Model):
     payment_method = models.CharField(max_length=50)
     payment_status = models.CharField(max_length=50,default='pending')
 
+    def __str__(self) -> str:
+        return f'PAYMENT-{self.booking}'
 
 class DownPayment(models.Model):
     payment_intent_id = models.CharField(max_length=255, unique=True)
@@ -47,6 +49,9 @@ class DownPayment(models.Model):
     payment_status = models.CharField(max_length=50,default='pending')
     payer_email = models.CharField(max_length=50, null=True, blank=True)
     payer_name = models.CharField(max_length=50, null=True, blank=True)
+
+    def __str__(self) -> str:
+        return f'DOWNPAYMENT-{self.booking}'
 
 
 # class Payment

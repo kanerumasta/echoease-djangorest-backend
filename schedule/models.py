@@ -51,3 +51,12 @@ class RecurringPattern(models.Model):
          if conflicting_availabities.exists():
             conflicting_days = ', '.join([availability.get_day_of_week_display() for availability in conflicting_availabities])
             raise ValidationError(f'Artist has conflicting availability on {conflicting_days}')
+
+
+
+class UnavailableDate(models.Model):
+    artist = models.ForeignKey(Artist, on_delete=models.CASCADE)
+    date = models.DateField()
+
+    def __str__(self) -> str:
+        return f'{self.artist} - {self.date}'

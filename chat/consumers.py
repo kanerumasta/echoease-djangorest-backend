@@ -43,11 +43,10 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
     async def chat_message(self, event):
         message = event["message"]
-
         await self.send(text_data=json.dumps( message))
 
 
-    
+
     @sync_to_async
     def get_conversation_or_404(self, room_name):
         return get_object_or_404(Conversation, code=room_name)

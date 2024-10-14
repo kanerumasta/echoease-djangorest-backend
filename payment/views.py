@@ -13,6 +13,7 @@ from decimal import Decimal, InvalidOperation
 from django.conf import settings
 import base64
 import requests
+from notification.utils import notify_artist_of_paid_downpayment
 
 # class PaypalOrderView(APIView):
 #     def post(self, request, *args, **kwargs):
@@ -140,6 +141,10 @@ class DownPaymentStatusView(APIView):
 
                 )
                 print("Downpayment created successfully.")
+                #update booking status
+                booking.downpayment_paid()
+                notify_artist_of_paid_downpayment(artist=booking.artist.user, booking=booking)
+
             else:
                 # Downpayment already exists, take no action
                 print("Downpayment already exists for this booking.")
@@ -205,7 +210,6 @@ class CreateDownPaymentIntentView(APIView):
         # Handle errors from PayMongo
         return Response(response.json(), status=response.status_code)
 
-
 class AttachPaymentMethodView(APIView):
     def post(self, request):
         booking_id = request.data.get("booking")
@@ -265,9 +269,6 @@ class AttachPaymentMethodView(APIView):
                 retrieve_response = requests.get(url=retrieve_url, headers=headers)
                 print(retrieve_response.json())
 
-                #update booking status
-                booking.downpayment_paid()
-
                 return Response({"amount":amount,"description":description, "url":url}, status=status.HTTP_200_OK)
             else:
                 return Response(attach_response.json(), status=attach_response.status_code)
@@ -299,7 +300,10 @@ class FinalPaymentIntentView(APIView):
                     'amount':int(payment_amount) * 100,
                     'payment_method_allowed':['gcash','paymaya'],
                     'currency':currency,
-                    'description':f'Final booking payment for {booking.artist.user.first_name} {booking.artist.user.last_name}'
+                    'description':f'Final booking payment for {booking.artist.user.first_name} {booking.artist.user.last_name}',
+                    'metadata':{
+                        'booking_id':str(booking.id)
+                    }
                 }
             }
         }
@@ -384,9 +388,6 @@ class AttachFinalPaymentMethodView(APIView):
 class FinalPaymentStatusView(APIView):
     def post(self, request):
         payment_intent_id = request.data.get("payment_intent_id")
-        booking_id = request.data.get("booking")
-        booking = get_object_or_404(Booking, id=booking_id)
-
         if not payment_intent_id:
             return Response({'error': 'payment_intent_id is required'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -402,6 +403,8 @@ class FinalPaymentStatusView(APIView):
 
         if response.status_code == 200:
             payment_intent = response.json()
+            booking_id = payment_intent['data']['attributes']['metadata']['booking_id']
+            booking = get_object_or_404(Booking, pk=booking_id)
             intent_status = payment_intent['data']['attributes']['status']
 
             # Check if a final payment already exists for the booking

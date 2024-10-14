@@ -1,4 +1,4 @@
-from .models import Availability, RecurringPattern
+from .models import Availability, RecurringPattern, UnavailableDate
 from rest_framework import serializers
 
 class AvailabilitySerializer(serializers.ModelSerializer):
@@ -47,3 +47,9 @@ class RecurringPatternSerializer(serializers.ModelSerializer):
          if overlap_count > 0:
              raise serializers.ValidationError("This recurring pattern overlaps with an existing recurring pattern.")
          return data
+
+
+class UnavailableDateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UnavailableDate
+        fields = '__all__'

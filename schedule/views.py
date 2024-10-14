@@ -4,14 +4,17 @@ from rest_framework import status
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from artists.models import Artist
+from django.utils import timezone
+
 from .models import Availability, RecurringPattern
 from datetime import datetime
 from booking.models import Booking
-
+from .models import UnavailableDate
 
 from .serializers import (
     AvailabilitySerializer,
-    RecurringPatternSerializer
+    RecurringPatternSerializer,
+    UnavailableDateSerializer
 )
 
 class AvailabilityView(APIView):
@@ -28,7 +31,6 @@ class AvailabilityView(APIView):
             serializer.save()
             return Response(serializer.data, status = status.HTTP_200_OK)
         return Response(serializer.errors, status =status.HTTP_400_BAD_REQUEST)
-
 class RecurringPatternView(APIView):
     def post(self, request, *args, **kwargs):
         artist_id = request.data.get('artist')
@@ -38,7 +40,6 @@ class RecurringPatternView(APIView):
             serializer.save()
             return Response(serializer.data, status = status.HTTP_200_OK)
         return Response(serializer.errors, status = status.HTTP_400_BAD_REQUEST)
-
 class ArtistTimeSlotView(APIView):
     def get(self, request, artist_id, date):
         artist = get_object_or_404(Artist,id=artist_id)
@@ -122,9 +123,6 @@ class ArtistTimeSlotView(APIView):
                 })
 
         return Response(new_time_slots, status=status.HTTP_200_OK)
-
-
-
 class ArtistScheduleView(APIView):
     def get(self, request, artist_id):
         artist = get_object_or_404(Artist, id = artist_id)
@@ -160,7 +158,6 @@ class ArtistScheduleView(APIView):
 class ArtistWeekDaysAvailableView(APIView):
     def get(self, request, artist_id):
         artist = get_object_or_404(Artist, id=artist_id)
-
         weekdays_data = []
 
         # Loop over the days of the week
@@ -179,3 +176,40 @@ class ArtistWeekDaysAvailableView(APIView):
                 weekdays_data.append(day_value)
 
         return Response(weekdays_data, status=status.HTTP_200_OK)
+class ArtistUnavailableDatesView(APIView):
+    def post(self, request):
+        date = request.data.get('date','')
+        artist = get_object_or_404(Artist, user = request.user)
+        try:
+            date_obj = timezone.datetime.strptime(date, '%Y-%m-%d').date()
+        except ValueError:
+            return Response({'error':'invalid date'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            unavailable = UnavailableDate.objects.create(date=date_obj, artist = artist)
+            unavailable.save()
+            return Response(status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response({'message':'error creating unavailable date'})
+
+    def delete(self, request,id):
+        unavailable_date = get_object_or_404(UnavailableDate, id=id)
+        unavailable_date.delete()
+        return Response(status=status.HTTP_200_OK)
+
+
+    def get(self, request, artist_id=None, id=None):
+        if id:
+            unavailable_date = get_object_or_404(UnavailableDate, id=id)
+            serializer = UnavailableDateSerializer(unavailable_date)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        if artist_id:
+            artist = get_object_or_404(Artist , id=artist_id)
+            unavailable_dates = UnavailableDate.objects.filter(artist = artist)
+            serializer = UnavailableDateSerializer(unavailable_dates, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        artist = get_object_or_404(Artist, user = request.user)
+        unavailable_dates = UnavailableDate.objects.filter(artist = artist)
+        serializer = UnavailableDateSerializer(unavailable_dates, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)

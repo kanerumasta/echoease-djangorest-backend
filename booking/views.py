@@ -9,6 +9,12 @@ from .models import Booking
 from notification.models import Notification
 from .permissions import IsInvolved
 from rest_framework.decorators  import permission_classes
+from artists.models import Artist
+from notification.utils import (
+    notify_artist_of_new_booking,
+    notify_client_of_accepted_booking,
+    notify_artist_of_paid_downpayment,
+)
 from .utils import (
     create_new_booking_notification,
     create_booking_confirmation_notification,
@@ -20,12 +26,14 @@ import datetime
 
 class BookingView(views.APIView):
     def post(self, request):
-        print(request.data)
+        artist_id = request.data.get('artist')
+        artist = get_object_or_404(Artist, id = artist_id)
         serializer = BookingSerializer(data = request.data)
         try:
             if serializer.is_valid():
                 booking = serializer.save(client = request.user)
-                booking_id = booking.id
+                booking_id = booking.id # type: ignore
+                notify_artist_of_new_booking(artist=artist.user, booking = booking)
                 create_new_booking_notification(booking_id)
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
             print(serializer.errors)
@@ -59,6 +67,7 @@ class BookingConfirmView(views.APIView):
             return Response({'message':'this booking is not pending'}, status=status.HTTP_400_BAD_REQUEST)
         booking.approve()
         create_booking_confirmation_notification(id)
+        notify_client_of_accepted_booking(client=booking.client,booking=booking)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 class BookingRejectView(views.APIView):

@@ -1,7 +1,7 @@
 from django.db.models import Q
 from rest_framework import serializers
 from users.serializers import UserProfileSerializer
-from .models import PortfolioItemMedia,UnavailableDate ,Portfolio, PortfolioItem, Portfolio, Artist, ArtistApplication, Genre, IDType, Rate, ConnectionRequest
+from .models import PortfolioItemMedia ,Portfolio, PortfolioItem, Portfolio, Artist, ArtistApplication, Genre, IDType, Rate, ConnectionRequest
 from django.utils.dateformat import time_format
 
 class PortfolioItemMediaSerializer(serializers.ModelSerializer):
@@ -104,13 +104,6 @@ class ArtistConnectionsSerializer(serializers.ModelSerializer):
     class Meta:
         model = Artist
         fields =['connections']
-
-
-class UnavailableDateSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = UnavailableDate
-        fields = '__all__'
-
 
 
 

@@ -112,5 +112,8 @@ class Booking(models.Model):
         self.amount = self.rate.amount
         super().save(*args, **kwargs)
 
+    def __str__(self):
+        return f'{self.event_name} - {self.artist} - {self.client}'
+
     class Meta:
         ordering = ['-created_at']

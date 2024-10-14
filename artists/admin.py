@@ -12,7 +12,6 @@ from .models import (
     Rate,
     ConnectionRequest,
     PortfolioItemMedia,
-    UnavailableDate
 )
 
 
@@ -49,7 +48,7 @@ class ArtistApplicationAdmin(admin.ModelAdmin):
                     application.save()
                     application.user.role = 'artist'
                     application.user.save()
-                    
+
                 except Exception as e:
                     print(e)
                     print('Failed approving artist application')
@@ -94,4 +93,3 @@ admin.site.register(IDType,GeneralAdmin)
 admin.site.register(Rate, GeneralAdmin)
 admin.site.register(ConnectionRequest, GeneralAdmin)
 admin.site.register(PortfolioItemMedia, GeneralAdmin)
-admin.site.register(UnavailableDate, GeneralAdmin)
