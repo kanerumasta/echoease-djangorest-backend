@@ -4,12 +4,16 @@ from .views import (
     RecurringPatternView,
     ArtistScheduleView,
     ArtistTimeSlotView,
-    ArtistWeekDaysAvailableView
+    ArtistWeekDaysAvailableView,
+    CombinedAvailabilityView
     )
 
 urlpatterns = [
     path('availabilities', AvailabilityView.as_view()),
+    path('availabilities/<int:availability_id>', AvailabilityView.as_view()),
     path('recurring-patterns', RecurringPatternView.as_view()),
+    path('recurring-patterns/<int:recurring_id>', RecurringPatternView.as_view()),
+    path('combined-availability/<int:artist_id>', CombinedAvailabilityView.as_view()),
     path('artist-schedule/<int:artist_id>', ArtistScheduleView.as_view()),
     path('artist-weekdays/<int:artist_id>', ArtistWeekDaysAvailableView.as_view()),
     path('artist-time-slot/<int:artist_id>/<str:date>', ArtistTimeSlotView.as_view())

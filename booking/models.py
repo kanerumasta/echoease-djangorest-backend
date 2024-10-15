@@ -7,7 +7,7 @@ from artists.models  import Rate
 User = get_user_model()
 
 class Booking(models.Model):
-
+    booking_reference = models.CharField(max_length=15, blank=True, unique=True)
     artist = models.ForeignKey(Artist, on_delete=models.CASCADE, verbose_name='Echoee')
     client = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True, verbose_name='Echoer')
     amount = models.DecimalField(max_digits=10, decimal_places=2,null=True, blank=True)
@@ -41,6 +41,12 @@ class Booking(models.Model):
 
 
     #approve here only sets statust to awaiting downpayment
+
+    def calculate_downpayment(self):
+        if self.amount is None:
+            return Decimal(0)
+        return Decimal(0.20) * self.amount #20% downpayment
+
     def approve(self):
         self.status = 'awaiting_downpayment'
         self.save()
@@ -107,10 +113,14 @@ class Booking(models.Model):
             raise ValidationError("Client user should not book it's own artist profile")
 
 
+
+
     def save(self, *args, **kwargs):
         self.clean()
         self.amount = self.rate.amount
         super().save(*args, **kwargs)
+
+
 
     def __str__(self):
         return f'{self.event_name} - {self.artist} - {self.client}'

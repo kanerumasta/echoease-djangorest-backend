@@ -31,6 +31,21 @@ class AvailabilityView(APIView):
             serializer.save()
             return Response(serializer.data, status = status.HTTP_200_OK)
         return Response(serializer.errors, status =status.HTTP_400_BAD_REQUEST)
+    def patch(self, request,availability_id, *args, **kwargs):
+        artist = get_object_or_404(Artist, user=request.user)
+        availability = get_object_or_404(Availability, id = availability_id)
+        serializer = AvailabilitySerializer(availability,data = request.data, partial=True,context={'artist':artist})
+        if serializer.is_valid():
+            serializer.save()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request,availability_id, *args, **kwargs):
+        availability = get_object_or_404(Availability, id=availability_id)
+        availability.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
 class RecurringPatternView(APIView):
     def post(self, request, *args, **kwargs):
         artist_id = request.data.get('artist')
@@ -40,6 +55,20 @@ class RecurringPatternView(APIView):
             serializer.save()
             return Response(serializer.data, status = status.HTTP_200_OK)
         return Response(serializer.errors, status = status.HTTP_400_BAD_REQUEST)
+    def patch(self, request,recurring_id, *args, **kwargs):
+        artist = get_object_or_404(Artist, user=request.user)
+        recurring_pattern = get_object_or_404(RecurringPattern, id = recurring_id)
+        serializer = RecurringPatternSerializer(recurring_pattern,data = request.data, partial=True,context={'artist':artist})
+        if serializer.is_valid():
+            serializer.save()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request,recurring_id, *args, **kwargs):
+        recurring = get_object_or_404(RecurringPattern, id = recurring_id)
+        recurring.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 class ArtistTimeSlotView(APIView):
     def get(self, request, artist_id, date):
         artist = get_object_or_404(Artist,id=artist_id)
@@ -131,6 +160,7 @@ class ArtistScheduleView(APIView):
 
         availability_data = [
             {
+                'id':availability.pk,
                 'day_of_week': availability.day_of_week,
                 'start_time':availability.start_time,
                 'end_time':availability.end_time,
@@ -144,6 +174,7 @@ class ArtistScheduleView(APIView):
             for day in recurring.days_of_week:
                 recurring_data.append(
                     {
+                        'id':recurring.pk,
                         'day_of_week': day,
                         'start_time': recurring.start_time,
                         'end_time': recurring.end_time,
@@ -213,3 +244,48 @@ class ArtistUnavailableDatesView(APIView):
         unavailable_dates = UnavailableDate.objects.filter(artist = artist)
         serializer = UnavailableDateSerializer(unavailable_dates, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class CombinedAvailabilityView(APIView):
+    def get(self, request, artist_id):
+        # Fetch all availabilities and recurring patterns for the given artist
+        availabilities = Availability.objects.filter(artist_id=artist_id)
+        recurring_patterns = RecurringPattern.objects.filter(artist_id=artist_id)
+
+        result = []
+
+        # Process availabilities
+        for availability in availabilities:
+            result.append({
+                "id":availability.pk,
+                "day_of_week": availability.get_day_of_week_display(), # type: ignore
+                "start_time": availability.start_time,
+                "end_time": availability.end_time,
+                "is_recurring": False
+            })
+
+        # Process recurring patterns
+        for pattern in recurring_patterns:
+            days = pattern.days_of_week  # This should be a list of integers representing days
+            start_day = min(days)
+            end_day = max(days)
+
+            # Check if days are consecutive
+            if end_day - start_day == len(days) - 1:  # All days in the range
+                # Create a string for consecutive days
+                day_range = f"{Availability.DaysOfWeek(start_day).label} to {Availability.DaysOfWeek(end_day).label}"
+            else:
+                # Non-consecutive days; list them out
+                day_range = ", ".join(
+                    [Availability.DaysOfWeek(day).label for day in days]
+                )
+
+            result.append({
+                "id":pattern.pk,
+                "day_of_week": day_range,
+                "start_time": pattern.start_time,
+                "end_time": pattern.end_time,
+                "is_recurring":True
+            })
+
+        return Response(result)

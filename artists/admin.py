@@ -39,6 +39,25 @@ class ArtistApplicationAdmin(admin.ModelAdmin):
 
                     artist.genres.set(application.genres.all())
 
+                    portfolio = artist.portfolio
+
+                    portfolio_item = PortfolioItem.objects.create(
+                        portfolio=portfolio,
+                        title='Sample Videos',
+                        description='Sample videos from the artist application',
+                        group='portfolio'
+                    )
+
+                    # Add sample videos to the portfolio item as media
+                    sample_videos = [application.sample_video1, application.sample_video2, application.sample_video3]
+                    for index, video in enumerate(sample_videos, start=1):
+                        if video:
+                            PortfolioItemMedia.objects.create(
+                                portfolio_item=portfolio_item,
+                                media_type='video',
+                                file=video
+                            )
+
                     rates = application.rates.all()
                     for rate in rates:
                         rate.artist = artist

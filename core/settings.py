@@ -55,7 +55,8 @@ INSTALLED_APPS = [
     'payment',
     'dispute',
     'notification',
-    'schedule'
+    'schedule',
+    'transaction'
 
 
 ]
@@ -101,7 +102,7 @@ DATABASES = {
     # }
     'default':{
         "ENGINE":"django.db.backends.postgresql_psycopg2",
-        "NAME":'echoeasev2',
+        "NAME":'echoeasev3',
         'USER':'postgres',
         'PASSWORD':'011456',
         'HOST':'127.0.0.1',

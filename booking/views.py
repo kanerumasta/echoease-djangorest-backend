@@ -1,5 +1,5 @@
 from django.shortcuts import render
-from django.db.models import Q
+from django.db.models import Q, Exists, OuterRef
 from rest_framework import views
 from rest_framework.response import Response
 from rest_framework import status
@@ -10,6 +10,7 @@ from notification.models import Notification
 from .permissions import IsInvolved
 from rest_framework.decorators  import permission_classes
 from artists.models import Artist
+from payment.models import Payment
 from notification.utils import (
     notify_artist_of_new_booking,
     notify_client_of_accepted_booking,
@@ -92,11 +93,16 @@ class BookingCancelView(views.APIView):
 
 class PendingPaymentsView(views.APIView):
     def get(self, request):
+        final_payment_exists = Payment.objects.filter(
+            booking = OuterRef('pk'),
+            payment_type = 'final_payment'
+        )
         bookings = Booking.objects.filter(
             Q(artist__user=request.user) | Q(client=request.user),
               status='approved',
                 event_date__lt=datetime.datetime.now().date(),
-                payment__isnull=True
+             ).filter(
+                ~Exists(final_payment_exists)
              )
         serializer = BookingSerializer(bookings, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)

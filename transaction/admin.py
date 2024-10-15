@@ -1,3 +1,7 @@
 from django.contrib import admin
+from .models import Transaction
 
-# Register your models here.
+class GeneralAdmin(admin.ModelAdmin):
+    list_display = ('pk', '__str__')
+
+admin.site.register(Transaction, GeneralAdmin)
