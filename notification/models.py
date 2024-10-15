@@ -1,7 +1,7 @@
 from django.db import models
 from artists.models import Artist
 from booking.models import Booking
-from chat.models import Message
+# from chat.models import Message
 from django.conf import settings
 
 
@@ -23,7 +23,7 @@ class Notification(models.Model):
     description = models.TextField()
 
     booking = models.ForeignKey(Booking, null=True, blank=True, on_delete=models.CASCADE)
-    message = models.ForeignKey(Message, null=True, blank=True, on_delete=models.CASCADE)
+    message = models.CharField(max_length=255,null=True, blank=True)
     follower = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, related_name="notifications_as_follower", on_delete=models.CASCADE)
 
     is_read = models.BooleanField(default=False)
@@ -35,5 +35,3 @@ class Notification(models.Model):
 
     class Meta:
         ordering = ['-created_at']
-
-
