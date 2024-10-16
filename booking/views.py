@@ -2,7 +2,7 @@ from django.shortcuts import render
 from django.db.models import Q, Exists, OuterRef
 from rest_framework import views
 from rest_framework.response import Response
-from rest_framework import status
+from rest_framework import status,pagination
 from .serializers import BookingSerializer
 from django.shortcuts import get_object_or_404
 from .models import Booking
@@ -25,7 +25,32 @@ from .utils import (
 from django.utils import timezone
 import datetime
 
+class BookingPagination(pagination.PageNumberPagination):
+    page_size = 10
+    max_page_size=20
+    page_size_query_param = 'page_size'
+    page_query_param = 'page'
+    def get_paginated_response(self, data):
+        return Response({
+            'links': {
+                'next': self.get_next_link(),
+                'previous': self.get_previous_link()
+            },
+            'total_pages': self.page.paginator.num_pages,
+            'current_page': self.page.number,
+            'has_next': self.page.has_next(),
+            'has_previous': self.page.has_previous(),
+            'count': self.page.paginator.count,
+            'results': data
+        },status=status.HTTP_200_OK)
+
+
+
+
+
+
 class BookingView(views.APIView):
+    pagination_class = BookingPagination
     def post(self, request):
         artist_id = request.data.get('artist')
         artist = get_object_or_404(Artist, id = artist_id)
@@ -50,15 +75,25 @@ class BookingView(views.APIView):
             self.check_object_permissions(request, booking)
             serializer = BookingSerializer(booking)
             return Response(serializer.data, status=status.HTTP_200_OK)
+
         status_filter = request.query_params.get('status')
-        sort = request.query_params.get('sort')
-        bookings = Booking.objects.filter(Q(client = request.user)|Q(artist__user = request.user))
+        bookings = Booking.objects.filter(Q(client=request.user) | Q(artist__user=request.user))
+
+        # Apply the status filter if it is provided
         if status_filter:
-            bookings = bookings.filter(status = status_filter)
-        if sort == 'date':
-            bookings = bookings.order_by('event_date','start_time')
+            bookings = bookings.filter(status=status_filter)
+
+        # Only paginate if we're retrieving all bookings
+        if not status_filter:
+            paginator = self.pagination_class()
+            paginated_bookings = paginator.paginate_queryset(bookings, request)
+            serializer = BookingSerializer(paginated_bookings, many=True)
+            return paginator.get_paginated_response(serializer.data)
+
+        # If status_filter is provided, return all matching bookings without pagination
         serializer = BookingSerializer(bookings, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
 
 class BookingConfirmView(views.APIView):
     @permission_classes([IsInvolved])
@@ -92,6 +127,7 @@ class BookingCancelView(views.APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 class PendingPaymentsView(views.APIView):
+    pagination_class = BookingPagination
     def get(self, request):
         final_payment_exists = Payment.objects.filter(
             booking = OuterRef('pk'),
@@ -105,8 +141,7 @@ class PendingPaymentsView(views.APIView):
                 ~Exists(final_payment_exists)
              )
         serializer = BookingSerializer(bookings, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
-
+        return Response(serializer.data, status = status.HTTP_200_OK)
 class UpcomingEventsView(views.APIView):
     def get(self, request):
         print()

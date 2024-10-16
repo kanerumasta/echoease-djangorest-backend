@@ -2,6 +2,7 @@ from rest_framework import serializers
 from .models import Booking
 from users.serializers import UserAccountSerializer
 from artists.serializers import ArtistSerializer
+from payment.models import Payment
 from artists.models import Artist, Rate
 
 
@@ -24,10 +25,20 @@ class BookingSerializer(serializers.ModelSerializer):
     )
     artist_details = ArtistSerializer(source='artist', read_only=True)
     rate_details = RateSerializer(source='rate', read_only=True)
+    service_fee = serializers.SerializerMethodField()
+    downpayment_amount = serializers.SerializerMethodField()
 
     class Meta:
         model = Booking
         fields = '__all__'
+
+    def get_service_fee(self, obj):
+        downpayment = Payment.objects.filter(booking=obj, payment_type='downpayment').first()
+        if downpayment:
+            return downpayment.service_fee
+        return None
+    def get_downpayment_amount(self,obj):
+        return obj.calculate_downpayment()
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)

@@ -6,7 +6,7 @@ from artists.models import Artist
 
 class Transaction(models.Model):
     TRANSACTION_TYPES = [
-        ('downpayment', 'Downpayment'),
+        ('downpayment', 'Down Payment'),
         ('final_payment', 'Final Payment'),
         ('payout', 'Payout'),
         ('refund', 'Refund'),
@@ -35,3 +35,6 @@ class Transaction(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']

@@ -60,3 +60,4 @@ class UnavailableDate(models.Model):
 
     def __str__(self) -> str:
         return f'{self.artist} - {self.date}'
+

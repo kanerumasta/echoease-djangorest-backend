@@ -52,7 +52,7 @@ class NotificationView(APIView):
                 paginated_notifications = paginator.paginate_queryset(notifications, request)
 
                 serializer = NotificationSerializer(paginated_notifications, many=True)
-                time.sleep(1.5)
+
                 return Response(serializer.data, status=status.HTTP_200_OK)
             except Exception as e:
                 print(e)
@@ -83,4 +83,3 @@ class NotificationView(APIView):
 @api_view(['GET'])
 def clear_all(request):
     pass
-

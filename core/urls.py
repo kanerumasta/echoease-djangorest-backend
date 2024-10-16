@@ -16,6 +16,7 @@ urlpatterns = [
     path('api/disputes/', include('dispute.urls')),
     path('api/notifications/', include('notification.urls')),
     path('api/schedule/', include('schedule.urls')),
+    path('api/transactions/', include('transaction.urls')),
 ]
 
 if settings.DEBUG:

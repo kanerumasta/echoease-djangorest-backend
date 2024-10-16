@@ -223,6 +223,7 @@ class ArtistUnavailableDatesView(APIView):
             return Response({'message':'error creating unavailable date'})
 
     def delete(self, request,id):
+        artist = get_object_or_404(Artist, user=request.user)
         unavailable_date = get_object_or_404(UnavailableDate, id=id)
         unavailable_date.delete()
         return Response(status=status.HTTP_200_OK)

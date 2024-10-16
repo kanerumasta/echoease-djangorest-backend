@@ -18,7 +18,11 @@ class ConversationsView(APIView):
         serializer = ConversationSerializer(conversations, many=True, context={'request':request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-
+class ConversationDetailView(APIView):
+    def get(self, request, code):
+        conversation = get_object_or_404(Conversation, code=code)
+        serializer = ConversationSerializer(conversation, context={'request':request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 class ConversationView(APIView):
     def get(self, request, code=None, slug=None):
@@ -34,9 +38,7 @@ class ConversationView(APIView):
             artist = get_object_or_404(Artist, slug=slug)
 
             # Check if conversation already exists with both participants
-            conversation = Conversation.objects.filter(
-                Q(participants=current_user) & Q(participants=artist.user)
-            ).first()
+            conversation = Conversation.objects.filter(participants=request.user).filter(participants = artist.user).first()
 
             # If no conversation exists, create a new one
             if not conversation:

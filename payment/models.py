@@ -32,7 +32,6 @@ class Payment(models.Model):
     payer_email = models.CharField(max_length=50, null=True, blank=True)
     payer_name = models.CharField(max_length=50, null=True, blank=True)
 
-
     payment_type = models.CharField(max_length=25, choices=[
         ('downpayment', 'Downpayment'),
         ('final_payment', 'Final Payment'),

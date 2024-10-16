@@ -25,9 +25,6 @@ class Booking(models.Model):
     street = models.CharField(max_length=255, null=True, blank=True)
     landmark = models.CharField(max_length=255, null=True, blank=True)
 
-
-
-
     status_choices = [
     ('pending','Pending'),
     ('cancelled','Cancelled'),
