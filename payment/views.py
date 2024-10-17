@@ -400,7 +400,7 @@ class FinalPaymentStatusView(APIView):
 
             # Return status based on the intent status
             if intent_status == 'succeeded':
-                return Response({"status": "success"}, status=status.HTTP_200_OK)
+                return Response({"status": "success","booking_id": booking_id}, status=status.HTTP_200_OK)
             elif intent_status == 'awaiting_payment_method':
                 return Response({"status": "pending"}, status=status.HTTP_200_OK)
             elif intent_status == 'awaiting_next_action':

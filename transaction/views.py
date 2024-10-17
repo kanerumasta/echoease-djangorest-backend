@@ -9,7 +9,7 @@ from artists.models import Artist
 from .serializers import TransactionSerializer
 
 class TransactionPagination(pagination.PageNumberPagination):
-    page_size =2
+    page_size =10
     page_size_query_param = 'page_size'
     max_page_size = 20
     def get_paginated_response(self, data):
