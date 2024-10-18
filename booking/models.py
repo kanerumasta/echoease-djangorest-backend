@@ -26,6 +26,7 @@ class Booking(models.Model):
     landmark = models.CharField(max_length=255, null=True, blank=True)
     is_reviewed = models.BooleanField(default=False)
     decline_reason = models.TextField(null=True, blank=True)
+    cancel_reason = models.TextField(null=True, blank=True)
 
     status_choices = [
     ('pending','Pending'),

@@ -4,6 +4,7 @@ from rest_framework import views
 from rest_framework.response import Response
 from rest_framework import status,pagination
 from .serializers import BookingSerializer
+from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
 from .models import Booking
 from notification.models import Notification
@@ -68,14 +69,8 @@ class BookingView(views.APIView):
             print(e)
             return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    @permission_classes([IsInvolved])
-    def get(self, request, id=None):
-        if id:
-            booking = get_object_or_404(Booking, id=id)
-            self.check_object_permissions(request, booking)
-            serializer = BookingSerializer(booking)
-            return Response(serializer.data, status=status.HTTP_200_OK)
 
+    def get(self, request):
         status_filter = request.query_params.get('status')
         bookings = Booking.objects.filter(Q(client=request.user) | Q(artist__user=request.user))
 
@@ -94,9 +89,18 @@ class BookingView(views.APIView):
         serializer = BookingSerializer(bookings, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+class BookingDetailView(views.APIView):
+    permission_classes = [IsAuthenticated, IsInvolved]
+    def get(self, request, id):
+        booking = get_object_or_404(Booking, id=id)
+        self.check_object_permissions(request, booking)
+        serializer = BookingSerializer(booking)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
 
 class BookingConfirmView(views.APIView):
-    @permission_classes([IsInvolved])
+    permission_classes = [IsAuthenticated, IsInvolved]
     def patch(self, request, id):
         booking = get_object_or_404(Booking, id=id)
         if not booking.is_pending:
@@ -107,17 +111,20 @@ class BookingConfirmView(views.APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 class BookingRejectView(views.APIView):
-    @permission_classes([IsInvolved])
+    permission_classes=[IsAuthenticated, IsInvolved]
     def patch(self, request, id):
         booking = get_object_or_404(Booking, id=id)
+        reason = request.data.get('reason','No reason stated.')
         if not booking.is_pending:
             return Response({'message':'this booking is not pending'}, status=status.HTTP_400_BAD_REQUEST)
+        booking.decline_reason = reason
         booking.reject()
+        booking.save()
         create_booking_rejected_notification(id)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 class BookingCancelView(views.APIView):
-    @permission_classes([IsInvolved])
+    permission_classes=[IsAuthenticated, IsInvolved]
     def patch(self, request, id):
         booking = get_object_or_404(Booking, id=id)
         if not booking.is_pending:
