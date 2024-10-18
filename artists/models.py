@@ -8,6 +8,7 @@ from django.contrib.auth import get_user_model
 from .validators import date_not_future
 from decimal import Decimal
 
+
 User = get_user_model()
 
 class IDType(models.Model):
@@ -104,6 +105,7 @@ class Artist(models.Model):
     award_image3 = models.ImageField(upload_to="images/awards", null=True, blank=True)
 
     connections= models.ManyToManyField('self', symmetrical=True, blank=True)
+
 
     def __str__(self):
         return f'{self.user.first_name} {self.user.last_name}'.title()

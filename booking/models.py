@@ -24,6 +24,8 @@ class Booking(models.Model):
     barangay = models.CharField(max_length=255, null=True, blank=True)
     street = models.CharField(max_length=255, null=True, blank=True)
     landmark = models.CharField(max_length=255, null=True, blank=True)
+    is_reviewed = models.BooleanField(default=False)
+    decline_reason = models.TextField(null=True, blank=True)
 
     status_choices = [
     ('pending','Pending'),
