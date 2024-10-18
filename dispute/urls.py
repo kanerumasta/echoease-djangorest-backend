@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import ClientDisputeView, ArtistDisputeView
+from .views import ClientDisputeView, ArtistDisputeView, DisputeView, DisputeEvidenceView
 
 
 urlpatterns = [
@@ -7,5 +7,6 @@ urlpatterns = [
     path('client-disputes/<int:pk>', ClientDisputeView.as_view()),
     path('artist-disputes/', ArtistDisputeView.as_view()),
     path('artist-disputes/<int:pk>', ArtistDisputeView.as_view()),
-
+    path('', DisputeView.as_view()),
+    path('evidences', DisputeEvidenceView.as_view()),
 ]
