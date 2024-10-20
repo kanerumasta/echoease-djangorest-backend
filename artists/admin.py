@@ -1,6 +1,6 @@
 from django.contrib import admin
-
-
+from django.core.mail import send_mail
+from django.conf import settings
 from .models import (
     ArtistApplication,
     Artist,
@@ -35,11 +35,12 @@ class ArtistApplicationAdmin(admin.ModelAdmin):
                         idol = application.idol,
                         years_experience = application.years_experience,
                         bio = application.bio,
+                        stage_name = application.stage_name
                     )
 
                     artist.genres.set(application.genres.all())
 
-                    portfolio = artist.portfolio
+                    portfolio = artist.portfolio # type: ignore
 
                     portfolio_item = PortfolioItem.objects.create(
                         portfolio=portfolio,
@@ -68,6 +69,17 @@ class ArtistApplicationAdmin(admin.ModelAdmin):
                     application.user.role = 'artist'
                     application.user.save()
 
+                    # Send email to the user notifying them of their approval\
+                    subject =  'Echoease Artist Application Approval'
+                    message = f'Your artist application has been approved.'
+                    send_mail(
+                        subject=subject,
+                        message=message,
+                        from_email=settings.DEFAULT_FROM_EMAIL,
+                        recipient_list=[application.user.email],
+                        fail_silently=True
+                        )
+
                 except Exception as e:
                     print(e)
                     print('Failed approving artist application')
@@ -78,6 +90,16 @@ class ArtistApplicationAdmin(admin.ModelAdmin):
             if application.status == 'under_review':
                 application.status = 'rejected'
                 application.save()
+                subject =  'Echoease Artist Application Declined'
+                message = f'We regret to inform you that your application has been rejected. Thank you for your interest in EchoEase.'
+                send_mail(
+                    subject=subject,
+                    message=message,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[application.user.email],
+                    fail_silently=True
+                    )
+
 
     approve_applications.short_description = 'Approve selected applications'
     reject_applications.short_description = 'Reject selected applications'

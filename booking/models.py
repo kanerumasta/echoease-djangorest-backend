@@ -4,6 +4,8 @@ from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from decimal import Decimal
 from artists.models  import Rate
+from django.utils import timezone
+from datetime import datetime
 User = get_user_model()
 
 class Booking(models.Model):
@@ -42,6 +44,16 @@ class Booking(models.Model):
     ]
 
     status = models.CharField(max_length=20, choices=status_choices, default='pending')
+
+    @property
+    def is_event_due(self):
+        # Combine event date and end time into a full datetime
+        event_end_datetime = timezone.make_aware(
+            datetime.combine(self.event_date, self.end_time),
+            timezone.get_current_timezone()
+        )
+        # Compare with current time
+        return timezone.now() > event_end_datetime
 
 
     #approve here only sets statust to awaiting downpayment

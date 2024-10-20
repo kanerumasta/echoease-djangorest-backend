@@ -8,12 +8,8 @@ def generate_slug(sender, instance,created, **kwargs):
     if created:
         if not instance.slug:
             try:
-                if instance.stage_name:
-                    instance.slug = instance.stage_name.replace(' ','-').lower()
-                    instance.save()
-                else:
-                    instance.slug = instance.user.full_name.replace(' ','-').lower()
-                    instance.save()
+                instance.slug = instance.user.full_name.replace(' ','-').lower()
+                instance.save()
             except:
                 print('ERROR(signals): cant generate slug')
 

@@ -14,6 +14,7 @@ class RateSerializer(serializers.ModelSerializer):
 
 
 class BookingSerializer(serializers.ModelSerializer):
+
     client = UserAccountSerializer(read_only=True)
     artist = serializers.PrimaryKeyRelatedField(
         queryset=Artist.objects.all(),
@@ -27,6 +28,7 @@ class BookingSerializer(serializers.ModelSerializer):
     rate_details = RateSerializer(source='rate', read_only=True)
     service_fee = serializers.SerializerMethodField()
     downpayment_amount = serializers.SerializerMethodField()
+    is_event_due = serializers.BooleanField(source='is_event_due', read_only=True)
 
     class Meta:
         model = Booking
