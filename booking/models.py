@@ -27,6 +27,10 @@ class Booking(models.Model):
     is_reviewed = models.BooleanField(default=False)
     decline_reason = models.TextField(null=True, blank=True)
     cancel_reason = models.TextField(null=True, blank=True)
+    cancelled_by = models.CharField(null=True, blank=True, choices=[
+        ('client','Client'),
+        ('artist','Artist')
+        ])
 
     status_choices = [
     ('pending','Pending'),
@@ -64,8 +68,16 @@ class Booking(models.Model):
 
         self.save()
 
-    def cancel(self):
+    def cancel(self, cancelled_by):
+        if cancelled_by not in ['client', 'artist']:
+            raise ValidationError("Invalid cancellation party. Must be 'client' or 'artist'.")
+
+        # Check if the booking can still be canceled
+        if self.is_completed:
+            raise ValidationError("You cannot cancel a completed booking.")
+
         self.status = 'cancelled'
+        self.cancelled_by = cancelled_by
         self.save()
 
     def complete(self):

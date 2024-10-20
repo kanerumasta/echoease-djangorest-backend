@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+
     # 'cloudinary',
     'corsheaders',
     'rest_framework',
@@ -57,7 +58,9 @@ INSTALLED_APPS = [
     'notification',
     'schedule',
     'transaction',
-    'review'
+    'review',
+    #  'background_task',
+
 
 
 ]

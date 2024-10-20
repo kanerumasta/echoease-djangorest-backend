@@ -28,6 +28,7 @@ class Genre(models.Model):
 
 class ArtistApplication(models.Model):
     bio = models.TextField(null=True, blank=True)
+    stage_name = models.CharField(max_length=255, null=True, blank=True)
     sample_video1 = models.FileField(upload_to="videos/", null=True, blank=True)
     sample_video2 = models.FileField(upload_to="videos/", null=True, blank=True)
     sample_video3 = models.FileField(upload_to="videos/", null=True, blank=True)
@@ -72,6 +73,7 @@ class Artist(models.Model):
     bio = models.TextField(null=True, blank=True)
     slug = models.SlugField(max_length=255, blank=True, null=True)
     genres = models.ManyToManyField(Genre, blank=True)
+    stage_name = models.CharField(max_length=255, null=True, blank=True)
 
     # Socials
     fb_link = models.CharField(max_length=255, null=True, blank=True)

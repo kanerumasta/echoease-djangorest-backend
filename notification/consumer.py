@@ -42,10 +42,12 @@ class NotificationConsumer(AsyncWebsocketConsumer):
         # Build the dynamic message based on notification_type
         if booking_type == 'new_booking':
             message = 'You have a new booking!'
-        elif booking_type == 'cancelled_boooking':
-            message = 'A booking has been cancelled.'
+        elif booking_type == 'cancelled_booking':
+            message = 'Your booking has been cancelled.'
         elif booking_type == 'accepted_booking':
             message = 'Your booking has been accepted.'
+        elif booking_type == 'rejected_booking':
+            message = 'Your booking has been declined.'
         elif booking_type == 'paid_downpayment':
             message = 'We just received a downpayment for your booking.'
         else:

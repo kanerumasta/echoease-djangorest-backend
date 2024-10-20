@@ -16,6 +16,8 @@ from notification.utils import (
     notify_artist_of_new_booking,
     notify_client_of_accepted_booking,
     notify_artist_of_paid_downpayment,
+    notify_client_of_cancelled_booking,
+    notify_client_of_rejected_booking,
 )
 from .utils import (
     create_new_booking_notification,
@@ -95,6 +97,14 @@ class BookingDetailView(views.APIView):
         booking = get_object_or_404(Booking, id=id)
         self.check_object_permissions(request, booking)
         serializer = BookingSerializer(booking)
+
+        #make notification as read
+        notifications = Notification.objects.filter(booking=booking,user = request.user)
+        for notif in notifications:
+            if not notif.is_read:
+                notif.read()
+
+
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
@@ -121,16 +131,35 @@ class BookingRejectView(views.APIView):
         booking.reject()
         booking.save()
         create_booking_rejected_notification(id)
+        notify_client_of_rejected_booking(user=booking.client, booking=booking)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 class BookingCancelView(views.APIView):
-    permission_classes=[IsAuthenticated, IsInvolved]
+    permission_classes = [IsAuthenticated, IsInvolved]
+
     def patch(self, request, id):
         booking = get_object_or_404(Booking, id=id)
-        if not booking.is_pending:
-            return Response({'message':'this booking is not pending'}, status=status.HTTP_400_BAD_REQUEST)
-        booking.cancel()
-        create_booking_cancelled_notification(id)
+        cancel_reason = request.data.get('cancel_reason','No reason stated')
+
+        if booking.is_completed:
+            return Response({'message': 'This booking is already completed and cannot be canceled.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if booking.client == request.user:
+            cancelled_by = 'client'
+        elif booking.artist.user == request.user:
+            cancelled_by = 'artist'
+        else:
+            return Response({'message': 'You do not have permission to cancel this booking.'}, status=status.HTTP_403_FORBIDDEN)
+
+        # Perform the cancellation
+        booking.cancel(cancelled_by=cancelled_by)
+        booking.cancel_reason = cancel_reason
+        booking.save()
+
+        # Create notifications
+        create_booking_cancelled_notification(booking.pk)
+        notify_client_of_cancelled_booking(user=booking.client, booking=booking)
+
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 class PendingPaymentsView(views.APIView):

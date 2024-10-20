@@ -13,6 +13,7 @@ from .models import (ArtistApplication, Artist, Genre, IDType, ConnectionRequest
 from booking.models import Booking
 from .permissions import IsArtist
 from django.utils import timezone
+from users.serializers import UserAccountSerializer
 import time
 
 
@@ -422,3 +423,11 @@ def set_date_unavailable(request):
         date_obj = timezone.datetime.strptime(date,'%Y-%m-%d').date()
     except ValueError:
         return Response({'error': 'Invalid date format. Use YYYY-MM-DD.'}, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+class ArtistFollowersView(APIView):
+    def get(self, request, artist_id):
+        artist = get_object_or_404(Artist, id=artist_id)
+        serializer = UserAccountSerializer(artist.followers, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)

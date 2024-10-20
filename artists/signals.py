@@ -8,10 +8,15 @@ def generate_slug(sender, instance,created, **kwargs):
     if created:
         if not instance.slug:
             try:
-                instance.slug = instance.user.full_name.replace(' ','-').lower()
-                instance.save()
+                if instance.stage_name:
+                    instance.slug = instance.stage_name.replace(' ','-').lower()
+                    instance.save()
+                else:
+                    instance.slug = instance.user.full_name.replace(' ','-').lower()
+                    instance.save()
             except:
                 print('ERROR(signals): cant generate slug')
+
 
 @receiver(post_save, sender = Artist)
 def create_portfolio(sender, instance, created, **kwargs):
@@ -20,4 +25,3 @@ def create_portfolio(sender, instance, created, **kwargs):
             Portfolio.objects.create(artist = instance)
         except Exception as e:
             print('Error(signals): failed creating portfolio')
-

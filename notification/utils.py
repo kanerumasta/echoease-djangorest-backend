@@ -59,7 +59,7 @@ def notify_artist_of_paid_downpayment(artist, booking): # new upcoming event
         }
     )
 
-def notify_user_of_cancelled_booking(user, booking):
+def notify_client_of_cancelled_booking(user, booking):
     channel_layer = get_channel_layer()
     group_name = f"user_{user.id}"
     # Send message to artist's WebSocket group
@@ -73,5 +73,22 @@ def notify_user_of_cancelled_booking(user, booking):
                 'event_date': str(booking.event_date)
             },
             'booking_type':'cancelled_booking'
+        }
+    )
+
+def notify_client_of_rejected_booking(user,booking):
+    channel_layer = get_channel_layer()
+    group_name = f"user_{user.id}"
+
+    async_to_sync(channel_layer.group_send)( # type: ignore
+        group_name,
+        {
+            'type': 'booking_notification',
+            'booking': {
+                'id': booking.id,
+                'artist': f'{booking.artist.user.first_name} {booking.artist.user.last_name}',
+                'event_date': str(booking.event_date)
+            },
+            'booking_type':'rejected_booking'
         }
     )

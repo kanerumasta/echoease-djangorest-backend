@@ -14,6 +14,7 @@ from django.conf import settings
 import base64
 import requests
 from notification.utils import notify_artist_of_paid_downpayment
+from notification.models import Notification
 from django.conf import settings
 
 USER = settings.AUTH_USER_MODEL
@@ -25,7 +26,6 @@ class DownPaymentStatusView(APIView):
         if not payment_intent_id:
             return Response({'error':'payment_intent_id is required'},status=status.HTTP_400_BAD_REQUEST)
 
-        # PayMongo API request to retrieve the payment intent status
         url = f"https://api.paymongo.com/v1/payment_intents/{payment_intent_id}"
         auth_key = base64.b64encode(f'{settings.PAYMONGO_SECRET_KEY}:'.encode('utf-8')).decode('utf-8')
         headers = {
@@ -37,6 +37,8 @@ class DownPaymentStatusView(APIView):
 
         if response.status_code == 200:
             payment_intent = response.json()
+            print(payment_intent)
+
             intent_status = payment_intent['data']['attributes']['status']
 
             # Getting booking id reference
@@ -55,6 +57,7 @@ class DownPaymentStatusView(APIView):
                 email = payment_data['billing']['email']
                 name = payment_data['billing']['name']
                 payment_status = payment_data['status']
+                payment_id = payment_intent['data']['attributes']['payments'][0]['id']
                 payment_method_type = payment_data['source']['type']
 
                 # Convert amounts
@@ -65,6 +68,7 @@ class DownPaymentStatusView(APIView):
                 # Create new downpayment instance
                 downpayment = Payment.objects.create(
                     payment_type = 'downpayment',
+                    payment_id = payment_id,
                     booking=booking,
                     client = booking.client,
                     payment_intent_id=payment_intent['data']['id'],
@@ -77,6 +81,41 @@ class DownPaymentStatusView(APIView):
                     payer_name=name
                 )
                 print("Downpayment created successfully.")
+                #create notif
+                # notification_choices = [
+                #     ('admin', 'Admin'),
+                #     ('message', 'Message'),
+                #     ('new_booking', 'New Booking'),
+                #     ('new_follower', 'New Follower'),
+                #     ('booking_confirmation', 'Booking Confirmation'),
+                #     ('booking_rejected', 'Booking Rejected'),
+                #     ('payment_reminder', 'Payment Reminder'),
+                #     ('event_reminder', 'Event Reminder'),
+                # ]
+
+                # user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,null=True, related_name='booking_notifications')
+                # notification_type = models.CharField(max_length=50, choices=notification_choices)
+                # title = models.CharField(max_length=255)
+                # description = models.TextField()\
+
+                # booking = models.ForeignKey(Booking, null=True, blank=True, on_delete=models.CASCADE)
+                # message = models.CharField(max_length=255,null=True, blank=True)
+                # follower = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, related_name="notifications_as_follower", on_delete=models.CASCADE)
+
+                # is_read = models.BooleanField(default=False)
+                # created_at = models.DateTimeField(auto_now_add=True)
+                try:
+
+                    notification = Notification.objects.create(
+                        notification_type = 'downpayment_paid',
+                        user = booking.artist.user,
+                        title="Downpayment Received! Your Event is Ready!",
+                        description=f"Great news! Echoer {booking.client.first_name.title()} {booking.client.last_name.title()} has successfully paid the downpayment for your confirmed booking . Your event is now all set and ready to go. We’re excited for the big day!",  # type: ignore
+                        booking=booking
+                    )
+                except Exception as e:
+                    print("failed create notification")
+
                 #update booking status
                 booking.downpayment_paid()
                 notify_artist_of_paid_downpayment(artist=booking.artist.user, booking=booking)
@@ -85,7 +124,7 @@ class DownPaymentStatusView(APIView):
                 # Downpayment already exists, take no action
                 print("Downpayment already exists for this booking.")
             if intent_status == 'succeeded':
-                return Response({"status": "success", "booking_id":booking.id}, status=status.HTTP_200_OK)
+                return Response({"status": "success", "booking_id":booking.pk}, status=status.HTTP_200_OK)
             elif intent_status == 'awaiting_payment_method':
                 return Response({"status": "pending"}, status=status.HTTP_200_OK)
             elif intent_status == 'awaiting_next_action':
@@ -128,7 +167,7 @@ class CreateDownPaymentIntentView(APIView):
                     'currency': currency,
                     'description': f'Booking down payment for {booking.artist.user.first_name} {booking.artist.user.last_name}',
                     'metadata': {
-                        'booking_id':str(booking.id)
+                        'booking_id':str(booking.pk)
                     }
                 }
             }
@@ -244,7 +283,7 @@ class FinalPaymentIntentView(APIView):
                     'currency':currency,
                     'description':f'Final booking payment for {booking.artist.user.first_name} {booking.artist.user.last_name}',
                     'metadata':{
-                        'booking_id':str(booking.id)
+                        'booking_id':str(booking.pk)
                     }
                 }
             }

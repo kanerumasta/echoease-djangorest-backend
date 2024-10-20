@@ -5,6 +5,7 @@ from booking.models import Booking
 from django.conf import settings
 
 
+
 class Notification(models.Model):
     notification_choices = [
         ('admin', 'Admin'),
@@ -20,7 +21,7 @@ class Notification(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,null=True, related_name='booking_notifications')
     notification_type = models.CharField(max_length=50, choices=notification_choices)
     title = models.CharField(max_length=255)
-    description = models.TextField()
+    description = models.TextField()\
 
     booking = models.ForeignKey(Booking, null=True, blank=True, on_delete=models.CASCADE)
     message = models.CharField(max_length=255,null=True, blank=True)
@@ -34,4 +35,4 @@ class Notification(models.Model):
         self.save()
 
     class Meta:
-        ordering = ['-created_at']
+        ordering = ['is_read','-created_at']

@@ -1,7 +1,8 @@
 from rest_framework import serializers
 from .models import Transaction
-
+from booking.serializers import BookingSerializer
 class TransactionSerializer(serializers.ModelSerializer):
+    booking = BookingSerializer(read_only=True)
     class Meta:
         model = Transaction
         fields = '__all__'
