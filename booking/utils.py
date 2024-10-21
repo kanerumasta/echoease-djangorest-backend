@@ -1,6 +1,30 @@
 
 from booking.models import Booking
 from notification.models import Notification
+# utils.py
+from weasyprint import HTML
+from django.template.loader import render_to_string
+from django.conf import settings
+import os
+
+def generate_booking_pdf(booking):
+    # Load HTML template and pass booking data
+    html_string = render_to_string('pdf_templates/booking_pdf.html', {'booking': booking})
+
+    # Generate the PDF file
+    html = HTML(string=html_string)
+    pdf_file = html.write_pdf()
+
+    # You can store the PDF temporarily in your MEDIA_ROOT
+    pdf_filename = f'booking_{booking.booking_reference}.pdf'
+    pdf_path = os.path.join(settings.MEDIA_ROOT, pdf_filename)
+
+    # Save PDF to file
+    with open(pdf_path, 'wb') as f:
+        f.write(pdf_file)
+
+    return pdf_path
+
 
 
 def create_new_booking_notification(booking_id):

@@ -26,6 +26,7 @@ class Booking(models.Model):
     barangay = models.CharField(max_length=255, null=True, blank=True)
     street = models.CharField(max_length=255, null=True, blank=True)
     landmark = models.CharField(max_length=255, null=True, blank=True)
+    venue = models.CharField(max_length=255, null=True, blank=True)
     is_reviewed = models.BooleanField(default=False)
     decline_reason = models.TextField(null=True, blank=True)
     cancel_reason = models.TextField(null=True, blank=True)
@@ -34,27 +35,28 @@ class Booking(models.Model):
         ('artist','Artist')
         ])
 
+    is_expired = models.BooleanField(default=False)
+
+    has_sent_payment_reminder = models.BooleanField(default=False)
+
     status_choices = [
     ('pending','Pending'),
     ('cancelled','Cancelled'),
     ('awaiting_downpayment','Wating for Downpayment'),
     ('rejected', 'Rejected'),
     ('approved', 'Approved'),
-    ('completed','Completed')
+    ('completed','Completed'),
+    ('expired','Expired'),
     ]
 
     status = models.CharField(max_length=20, choices=status_choices, default='pending')
 
     @property
     def is_event_due(self):
-        # Combine event date and end time into a full datetime
-        event_end_datetime = timezone.make_aware(
-            datetime.combine(self.event_date, self.end_time),
-            timezone.get_current_timezone()
-        )
-        # Compare with current time
-        return timezone.now() > event_end_datetime
-
+        event_end_datetime = datetime.combine(self.event_date, self.end_time)
+        print('eventdateimte',event_end_datetime)
+        print('now',datetime.now())
+        return datetime.now() > event_end_datetime
 
     #approve here only sets statust to awaiting downpayment
 

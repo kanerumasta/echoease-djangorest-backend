@@ -7,4 +7,5 @@ class BookingConfig(AppConfig):
 
     def ready(self):
         import booking.signals
+
         return super().ready()

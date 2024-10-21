@@ -19,11 +19,13 @@ from notification.utils import (
     notify_client_of_cancelled_booking,
     notify_client_of_rejected_booking,
 )
+from django.http import FileResponse
 from .utils import (
     create_new_booking_notification,
     create_booking_confirmation_notification,
     create_booking_rejected_notification,
-    create_booking_cancelled_notification
+    create_booking_cancelled_notification,
+    generate_booking_pdf
 )
 from django.utils import timezone
 import datetime
@@ -189,6 +191,19 @@ class UpcomingEventsView(views.APIView):
         serializer = BookingSerializer(bookings, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+class BookingPDFView(views.APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, id):
+        booking = get_object_or_404(Booking, id=id)
+
+        # Generate the PDF
+        pdf_path = generate_booking_pdf(booking)
+
+        # Serve the PDF as a downloadable file
+        response = FileResponse(open(pdf_path, 'rb'), content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="booking_{booking.booking_reference}.pdf"'
+        return response
 
 class BookingHistoryView(views.APIView):
     pass

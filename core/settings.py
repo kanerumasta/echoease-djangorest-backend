@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django_celery_beat',
 
     # 'cloudinary',
     'corsheaders',
@@ -114,6 +115,8 @@ DATABASES = {
 
     }
 }
+
+
 
 
 
@@ -251,6 +254,19 @@ CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels.layers.InMemoryChannelLayer',
     },
+}
+
+CELERY_BROKER_URL = 'redis://127.0.0.1:6379/0'
+CELERY_BEAT_SCHEDULE = {
+
+    'send_payment_reminder':{
+        'task':'booking.tasks.send_payment_reminders',
+        'schedule':60.0
+    },
+    'expire_bookings':{
+        'task':'booking.tasks.expire_bookings',
+        'schedule':60.0
+    }
 }
 
 JAZZMIN_SETTINGS = {
