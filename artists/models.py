@@ -1,12 +1,9 @@
 
 from django.db import models
-from django.conf import settings
 from django.core.exceptions import ValidationError
-from cloudinary.models import CloudinaryField
-from django.utils.text import slugify
 from django.contrib.auth import get_user_model
-from .validators import date_not_future
-from decimal import Decimal
+from cryptography.fernet import Fernet
+
 
 
 User = get_user_model()
@@ -74,6 +71,7 @@ class Artist(models.Model):
     slug = models.SlugField(max_length=255, blank=True, null=True)
     genres = models.ManyToManyField(Genre, blank=True)
     stage_name = models.CharField(max_length=255, null=True, blank=True)
+
 
     # Socials
     fb_link = models.CharField(max_length=255, null=True, blank=True)

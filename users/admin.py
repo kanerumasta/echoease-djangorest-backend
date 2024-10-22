@@ -1,7 +1,8 @@
 from django.contrib import admin
 from .models import (
     UserAccount,
-    Profile
+    Profile,
+    BusinessBoost
 )
 
 class ProfileAdmin(admin.ModelAdmin):
@@ -25,3 +26,4 @@ class UserAccountAdmin(admin.ModelAdmin):
 
 admin.site.register(Profile,ProfileAdmin)
 admin.site.register(UserAccount, UserAccountAdmin)
+admin.site.register(BusinessBoost)

@@ -1,6 +1,7 @@
-from datetime import datetime
-from django.conf import settings
 
+from django.conf import settings
+import requests
+from users.models import BusinessBoost
 from djoser.social.views import ProviderAuthView
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
@@ -239,3 +240,69 @@ def check_email(request, email):
     if user:
         return Response({'exists':True}, status=status.HTTP_200_OK)
     return Response({'exists':False},status=status.HTTP_200_OK)
+
+@api_view(['POST'])
+def initiate_boost_auth(request):
+    redirect_uri = request.data.get('redirect_uri')
+    if not redirect_uri:
+        return Response({'error':'redirect_uri is required'},status = status.HTTP_400_BAD_REQUEST)
+
+    url = f'https://www.facebook.com/v13.0/dialog/oauth?client_id={settings.FACEBOOK_CLIENT_ID}&redirect_uri={redirect_uri}&scope=pages_manage_posts,publish_pages,pages_show_list,pages_read_engagement'
+
+    return Response({'url':url}, status = status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+def authorize_business_boost(request):
+    user = request.user
+    code = request.data.get('code')
+    redirect_uri = request.data.get('redirect_uri')
+
+    if not code or not redirect_uri:
+        return Response({'error':'code and redirect_uri are required'},status = status.HTTP_400_BAD_REQUEST)
+
+    #exchange code with app access token
+    print('client id', settings.FACEBOOK_CLIENT_ID)
+    exchange_url = f"https://graph.facebook.com/v13.0/oauth/access_token?client_id={settings.FACEBOOK_CLIENT_ID}&redirect_uri={redirect_uri}&client_secret={settings.FACEBOOK_CLIENT_SECRET}&code={code}"
+
+    print('URL', exchange_url)
+
+    response = requests.get(exchange_url)
+    response_data = response.json()
+    print(response_data)
+    access_token = response_data.get('access_token')
+    if not access_token:
+        return Response({'error':'Failed to exchange code for access token'},status = status.HTTP_400_BAD_REQUEST)
+
+    #fetch facebook page details (page_id, page_name, etc. weewww)
+    page_url = f"https://graph.facebook.com/v13.0/me/accounts?access_token={access_token}"
+    page_response = requests.get(page_url)
+    page_data = page_response.json()
+    if not page_data or 'data' not in page_data:
+        return Response({'error':'Failed to fetch page details'},status = status.HTTP_400_BAD_REQUEST)
+    #extract page details from returned data
+    page_id = page_data['data'][0]['id']
+    page_name = page_data['data'][0]['name']
+    page_access_token = page_data['data'][0]['access_token']
+
+    try:
+        #create business boost record if it doesn't exist
+        business_boost, created = BusinessBoost.objects.get_or_create(
+            user = user,
+            defaults={
+                'page_id': page_id,
+                'page_name': page_name,
+                'is_active': True,
+            }
+        )
+        if not created:
+            business_boost.page_id = page_id
+            business_boost.page_name = page_name
+            business_boost.is_active = True
+        business_boost.set_access_token(page_access_token)
+        user.business_boost_opted = True
+        business_boost.save()
+        user.save()
+        return Response({'message':'Success'}, status = status.HTTP_200_OK)
+    except Exception as e:
+        return Response({'error':'Failed to create business boost record'},status = status.HTTP_500_INTERNAL_SERVER_ERROR)

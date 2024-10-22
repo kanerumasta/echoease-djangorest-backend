@@ -7,14 +7,14 @@ from .views import (
     PendingPaymentsView,
     UpcomingEventsView,
     BookingDetailView,
-    BookingPDFView
+    # BookingPDFView
 )
 
 
 urlpatterns = [
     path('', BookingView.as_view()),
     path('<int:id>',BookingDetailView.as_view()),
-    path('<int:id>/pdf',BookingPDFView.as_view()),
+    # path('<int:id>/pdf',BookingPDFView.as_view()),
     path('<int:id>/confirm',BookingConfirmView.as_view()),
     path('<int:id>/reject',BookingRejectView.as_view()),
     path('<int:id>/cancel',BookingCancelView.as_view()),

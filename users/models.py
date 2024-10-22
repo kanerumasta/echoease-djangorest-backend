@@ -1,6 +1,8 @@
 from django.db import models
 from cloudinary.models import CloudinaryField
 from django.contrib.auth.models import BaseUserManager, AbstractBaseUser, PermissionsMixin
+from cryptography.fernet import Fernet
+from django.conf import settings
 
 from .validators import date_not_future
 
@@ -49,6 +51,7 @@ class UserAccount(AbstractBaseUser, PermissionsMixin):
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     is_superuser = models.BooleanField(default=False)
+    business_boost_opted = models.BooleanField(default=False)
 
 
     # Roles
@@ -60,8 +63,8 @@ class UserAccount(AbstractBaseUser, PermissionsMixin):
     Categories = (('bar_owner', 'Bar Owner'), ('regular', 'Regular'), ('event_organizer', 'Event Organizer'))
     category = models.CharField(max_length=50,choices=Categories, default='regular')
     is_roled = models.BooleanField(default=False)
-
-
+    business_name = models.CharField(max_length=255, null=True, blank=True)
+    business_image = models.ImageField(upload_to='images/',null=True, blank=True)
     production_page = models.CharField(max_length=255, null=True, blank=True)
 
     doc_image1 = models.ImageField(upload_to="images/", null=True, blank=True)
@@ -135,3 +138,25 @@ class Profile(models.Model):
 
     class Meta:
         ordering = ['user']
+
+
+class BusinessBoost(models.Model):
+    user = models.OneToOneField(UserAccount, on_delete=models.CASCADE, related_name='business_boost')
+
+    page_name = models.CharField(max_length=255)
+    page_id = models.CharField(max_length=255, null=True, blank=True)  # Store Facebook Page ID
+    access_token = models.TextField()  # Store access token securely
+
+    is_active = models.BooleanField(default=False)  # To track if Business Boost is enabled
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def set_access_token(self, token):
+        # Encrypt the token before saving
+        fernet = Fernet(settings.ENCRYPTION_KEY)
+        self.access_token = fernet.encrypt(token.encode()).decode()
+
+    def get_access_token(self):
+        # Decrypt the token when retrieving
+        fernet = Fernet(settings.ENCRYPTION_KEY)
+        return fernet.decrypt(self.access_token.encode()).decode()

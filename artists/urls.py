@@ -15,6 +15,7 @@ from .views import (
     SentConnectionRequestView,
     ReceivedConnectionRequestView,
     ArtistFollowersView,
+
     # DefaultTimeSlotView,
     # TimeslotExceptionView,
     # SpecialTimeslotView,

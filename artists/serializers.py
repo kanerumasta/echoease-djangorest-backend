@@ -43,7 +43,7 @@ class ArtistSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Artist
-        fields = ['id','bio', 'slug','genres','fb_link','instagram','twitter','status','user','followers','date_approved','time_approved', 'spotify', 'youtube','artist_rates','idol','years_experience','award_image1','award_image2','award_image3','portfolio', 'connections','stage_name']
+        fields = '__all__'
 
     def to_representation(self, instance):
         representation =  super().to_representation(instance)

@@ -16,6 +16,8 @@ class Notification(models.Model):
         ('booking_rejected', 'Booking Rejected'),
         ('payment_reminder', 'Payment Reminder'),
         ('event_reminder', 'Event Reminder'),
+        ('downpayment_paid', 'Down Payment Paid'),
+       
     ]
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,null=True, related_name='booking_notifications')

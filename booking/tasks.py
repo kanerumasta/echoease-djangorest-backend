@@ -34,7 +34,7 @@ def send_payment_reminders():
 
 @shared_task
 def expire_bookings(): #expire bookings that are not approved by artists
-    two_days_ago = datetime.now() - timedelta(days=2)#TODO edit this to two days
+    two_days_ago = datetime.now() - timedelta(days=2)
     expired_bookings = Booking.objects.filter(is_completed=False, status='pending', created_at__lt=two_days_ago.date())
     for booking in expired_bookings:
 

@@ -2,28 +2,28 @@
 from booking.models import Booking
 from notification.models import Notification
 # utils.py
-from weasyprint import HTML
-from django.template.loader import render_to_string
+# from weasyprint import HTML
+# from django.template.loader import render_to_string
 from django.conf import settings
 import os
 
-def generate_booking_pdf(booking):
-    # Load HTML template and pass booking data
-    html_string = render_to_string('pdf_templates/booking_pdf.html', {'booking': booking})
+# def generate_booking_pdf(booking):
+#     # Load HTML template and pass booking data
+#     html_string = render_to_string('pdf_templates/booking_pdf.html', {'booking': booking})
 
-    # Generate the PDF file
-    html = HTML(string=html_string)
-    pdf_file = html.write_pdf()
+#     # Generate the PDF file
+#     html = HTML(string=html_string)
+#     pdf_file = html.write_pdf()
 
-    # You can store the PDF temporarily in your MEDIA_ROOT
-    pdf_filename = f'booking_{booking.booking_reference}.pdf'
-    pdf_path = os.path.join(settings.MEDIA_ROOT, pdf_filename)
+#     # You can store the PDF temporarily in your MEDIA_ROOT
+#     pdf_filename = f'booking_{booking.booking_reference}.pdf'
+#     pdf_path = os.path.join(settings.MEDIA_ROOT, pdf_filename)
 
-    # Save PDF to file
-    with open(pdf_path, 'wb') as f:
-        f.write(pdf_file)
+#     # Save PDF to file
+#     with open(pdf_path, 'wb') as f:
+#         f.write(pdf_file)
 
-    return pdf_path
+#     return pdf_path
 
 
 
@@ -99,40 +99,6 @@ def create_booking_cancelled_notification(booking_id):
         )
     except Booking.DoesNotExist:
         print(f"Booking with id {booking_id} does not exist.")
-
-# def create_payment_reminder_notification(booking_id):
-#     try:
-#         booking = Booking.objects.get(id=booking_id)
-
-#         notification_type = 'payment_reminder'
-#         title = 'Payment Reminder!'
-#         description = f'Remember to make the payment for your booking on {booking.event_date} with {booking.artist.get_full_name()}.'
-
-#         Notification.objects.create(
-#             user=booking.client,
-#             notification_type=notification_type,
-#             title=title,
-#             description=description,
-#             booking=booking
-#         )
-#     except Booking.DoesNotExist:
-#         print(f"Booking with id {booking_id} does not exist.")
-
-
-# def create_event_reminder_notification(booking_id):
-#     try:
-#         booking = Booking.objects.get(id=booking_id)
-
-#         notification_type = 'event_reminder'
-#         title = 'Event Reminder!'
-#         description = f'Reminder: Your event with {booking.artist.get_full_name()} is on {booking.event_date}.'
-
-#         Notification.objects.create(
-#             user=booking.client,
-#             notification_type=notification_type,
-#             title=title,
-#             description=description,
-#             booking=booking
-#         )
-#     except Booking.DoesNotExist:
-#         print(f"Booking with id {booking_id} does not exist.")
+#BUSINESS BOOST
+def upload_event_to_facebook():
+    pass

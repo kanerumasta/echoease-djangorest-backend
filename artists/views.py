@@ -2,6 +2,8 @@ from django.shortcuts import get_object_or_404, get_list_or_404
 from django.contrib.auth.models import AnonymousUser
 from django.db.models import Q
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.conf import settings
+import requests
 
 from rest_framework.views import APIView
 from rest_framework.decorators import api_view, permission_classes
@@ -15,6 +17,7 @@ from .permissions import IsArtist
 from django.utils import timezone
 from users.serializers import UserAccountSerializer
 import time
+
 
 
 from .serializers import (
@@ -374,7 +377,7 @@ def get_recommended_artists(request):
         genres__in=artist.genres.all(),
         status='active'
     ).exclude(
-        id=artist.id
+        id=artist.pk
     ).exclude(
         connections=artist
     ).exclude(
@@ -386,7 +389,7 @@ def get_recommended_artists(request):
         connections__in=artist.connections.all(),
         status='active'
     ).exclude(
-        id=artist.id
+        id=artist.pk
     ).exclude(
         connections=artist
     ).exclude(
@@ -431,3 +434,7 @@ class ArtistFollowersView(APIView):
         artist = get_object_or_404(Artist, id=artist_id)
         serializer = UserAccountSerializer(artist.followers, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+# class BusinessBoostView(APIView):
+#     def post(self, request):

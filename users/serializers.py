@@ -29,7 +29,7 @@ class UserAccountSerializer (ModelSerializer):
         fields =  UserAccount
         fields =  ['id', 'email','first_name','last_name', 'is_verified', 'is_staff', 'is_active', 'role', 'profile','category','is_roled',
                    'business_permit','doc_image1','doc_image2','doc_image3','doc_image4', 'doc_image5','government_id',
-                   'government_id_type','production_page'
+                   'government_id_type','production_page','business_name','business_boost_opted','business_image'
                    ]
 
     def to_representation(self, instance):
@@ -44,7 +44,7 @@ class UserProfileSerializer(ModelSerializer):
         model = UserAccount
         fields =  ['id', 'email','first_name','last_name', 'is_verified', 'is_staff', 'is_active', 'role', 'profile',
                    'business_permit','doc_image1','doc_image2','doc_image3','doc_image4', 'doc_image5','government_id',
-                   'government_id_type','production_page'
+                   'government_id_type','production_page','business_name','business_image'
                    ]
 
     def to_representation(self, instance):

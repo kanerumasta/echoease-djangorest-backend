@@ -9,7 +9,9 @@ from .views import (
     is_artist,
     check_email,
     PasswordResetView,
-    UpdateUserView
+    UpdateUserView,
+    authorize_business_boost,
+    initiate_boost_auth
 
 )
 
@@ -36,4 +38,7 @@ urlpatterns = [
     path('role-pick',UserView.as_view()),
     path('change-password', PasswordResetView.as_view()),
     path('change-name',UpdateUserView.as_view() ),
+    path('initiate-business-boost',initiate_boost_auth),
+    path('authorize-business-boost',authorize_business_boost)
+
 ]
