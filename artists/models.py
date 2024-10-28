@@ -92,8 +92,9 @@ class Artist(models.Model):
     user = models.OneToOneField(User,related_name="artist",on_delete=models.CASCADE, unique=True)
     followers = models.ManyToManyField(User, related_name="artists_followed", blank=True)
 
-    date_approved = models.DateField(null=True, blank=True)
-    time_approved = models.TimeField(null=True, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     #new fields
     spotify =models.CharField(max_length=255, null=True, blank=True)
@@ -147,7 +148,7 @@ class PortfolioItemMedia(models.Model):
     file = models.FileField(upload_to="portfolio_item_medias/", null=False, blank=False)
 
     def __str__(self):
-        return f'{self.media_type.capitalize()} for {self.portfolio_item.title}'
+        return f'{self.media_type.capitalize()} for {self.portfolio_item.title} - {self.portfolio_item.portfolio.artist}'
 
 class Rate(models.Model):
     artist = models.ForeignKey(Artist, on_delete=models.CASCADE, related_name='artist_rates', null=True, blank=True)

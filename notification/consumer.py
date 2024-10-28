@@ -7,15 +7,12 @@ import json
 
 class NotificationConsumer(AsyncWebsocketConsumer):
     async def connect(self):
-        print('connecting to artist')
         self.user = self.scope["user"]
 
         if self.user.is_authenticated:
             self.group_name = f"user_{self.user.id}"
-            print('groupname',self.group_name)
+
         else:
-            print(self.user)
-            print('not authenticated')
             self.group_name = None
 
         if self.group_name:
@@ -23,6 +20,7 @@ class NotificationConsumer(AsyncWebsocketConsumer):
                 self.group_name,
                 self.channel_name
             )
+
 
         await self.accept()
 
@@ -39,23 +37,41 @@ class NotificationConsumer(AsyncWebsocketConsumer):
         booking_data = event['booking']
         booking_type = event.get('booking_type', 'new_booking')  # Default to 'new_booking'
 
-        # Build the dynamic message based on notification_type
-        if booking_type == 'new_booking':
-            message = 'You have a new booking!'
-        elif booking_type == 'cancelled_booking':
-            message = 'Your booking has been cancelled.'
-        elif booking_type == 'accepted_booking':
-            message = 'Your booking has been accepted.'
-        elif booking_type == 'rejected_booking':
-            message = 'Your booking has been declined.'
-        elif booking_type == 'paid_downpayment':
-            message = 'We just received a downpayment for your booking.'
-        else:
-            message = 'You have a new notification.'
+        # Define a dictionary to map booking types to professional messages
+        booking_messages = {
+            'new_booking': 'A new booking request has been received.',
+            'cancelled_booking': 'The booking has been canceled by the client.',
+            'accepted_booking': 'Your booking request has been confirmed.',
+            'rejected_booking': 'The booking request has been declined.',
+            'paid_downpayment': 'A down payment for your booking has been successfully received.'
+        }
 
-        # Send the dynamic message and booking data to the artist via WebSocket
+        # Get the message from the dictionary, or use a default message for unknown booking types
+        message = booking_messages.get(booking_type, 'You have a new notification related to your booking.')
+
+        # Send the notification and booking data via WebSocket
         await self.send(text_data=json.dumps({
             'message': message,
             'booking': booking_data,
-            'booking_type': booking_type # Include this in case the frontend needs it
+            'booking_type': booking_type,
+            'notification_type':'booking'
+        }))
+
+   # Handle incoming message-related notifications dynamically
+    async def message_notification(self, event):
+        sender = event['sender']
+        message = event['message']
+
+        # Send the message notification via WebSocket
+        await self.send(text_data=json.dumps({
+            'message': f'{sender}: {message}',
+            'notification_type': 'message'
+        }))
+
+    async def application_notification(self, event):
+        message = event['message']
+
+        await self.send(text_data=json.dumps({
+            'message': message,
+            'notification_type': 'application'
         }))

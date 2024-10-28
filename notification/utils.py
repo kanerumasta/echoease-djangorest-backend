@@ -92,3 +92,27 @@ def notify_client_of_rejected_booking(user,booking):
             'booking_type':'rejected_booking'
         }
     )
+def notify_user_of_new_message(receiver, sender):
+    channel_layer = get_channel_layer()
+    group_name = f"user_{receiver.id}"
+    # Send message to receiver's WebSocket group
+    async_to_sync(channel_layer.group_send)( # type: ignore
+        group_name,
+        {
+            'type':'message_notification',
+            'sender': f'{sender.first_name} {sender.last_name}',
+        }
+    )
+
+def notify_application_accepted(user):
+    channel_layer = get_channel_layer()
+    group_name = f"user_{user.id}"
+
+    async_to_sync(channel_layer.group_send)( # type: ignore
+        group_name,
+        {
+            'type': 'application_notification',
+            'application_type':'accepted',
+            'user': f'{user.first_name} {user.last_name}'
+        }
+    )

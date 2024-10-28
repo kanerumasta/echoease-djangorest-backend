@@ -23,6 +23,13 @@ class Dispute(models.Model):
         ('resolved','Resolved'),
         ('escalated','Escalated'),
     ]
+    reason = models.CharField(max_length=100,default='other', choices = [
+        ('performance_quality','Performance Quality'),
+        ('cancellation','Cancellation'),
+        ('no_show','No Show'),
+        ('miscommunication','Miscommunication'),
+        ('other','Other'),
+    ])
     status = models.CharField(choices=DISPUTE_STATUS, default='under_review')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

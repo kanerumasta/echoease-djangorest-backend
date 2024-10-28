@@ -1,7 +1,6 @@
 from django.db import models
 from artists.models import Artist
 from booking.models import Booking
-# from chat.models import Message
 from django.conf import settings
 
 
@@ -10,6 +9,7 @@ class Notification(models.Model):
     notification_choices = [
         ('admin', 'Admin'),
         ('message', 'Message'),
+        ('application_accepted', 'Application Accepted'),
         ('new_booking', 'New Booking'),
         ('new_follower', 'New Follower'),
         ('booking_confirmation', 'Booking Confirmation'),
@@ -17,13 +17,13 @@ class Notification(models.Model):
         ('payment_reminder', 'Payment Reminder'),
         ('event_reminder', 'Event Reminder'),
         ('downpayment_paid', 'Down Payment Paid'),
-       
+
     ]
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,null=True, related_name='booking_notifications')
     notification_type = models.CharField(max_length=50, choices=notification_choices)
     title = models.CharField(max_length=255)
-    description = models.TextField()\
+    description = models.TextField()
 
     booking = models.ForeignKey(Booking, null=True, blank=True, on_delete=models.CASCADE)
     message = models.CharField(max_length=255,null=True, blank=True)

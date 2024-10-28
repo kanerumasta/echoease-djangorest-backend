@@ -14,6 +14,10 @@ from .models import (
     PortfolioItemMedia,
 
 )
+from notification.utils import (
+    notify_application_accepted
+)
+from notification.models import Notification
 
 
 class ArtistApplicationAdmin(admin.ModelAdmin):
@@ -52,7 +56,7 @@ class ArtistApplicationAdmin(admin.ModelAdmin):
 
                     # Add sample videos to the portfolio item as media
                     sample_videos = [application.sample_video1, application.sample_video2, application.sample_video3]
-                    for index, video in enumerate(sample_videos, start=1):
+                    for video in sample_videos:
                         if video:
                             PortfolioItemMedia.objects.create(
                                 portfolio_item=portfolio_item,
@@ -70,7 +74,19 @@ class ArtistApplicationAdmin(admin.ModelAdmin):
                     application.user.role = 'artist'
                     application.user.save()
 
+                    Notification.objects.create(
+                        user=application.user,
+                        notification_type="application_accepted",
+                        title="Welcome to EchoEase, Christian Bautista!",
+                        description="We’re pleased to inform you that your application has been approved. Congratulations on joining EchoEase as an official Echoee! Your talent is now part of a vibrant community of artists. Start connecting with fans and venues, and showcase your music on a platform designed to elevate your artistry. Welcome aboard!"
+
+                    )
+
+                    notify_application_accepted(user=application.user)
+
+
                     # Send email to the user notifying them of their approval\
+
                     subject =  'Echoease Artist Application Approval'
                     message = f'Your artist application has been approved.'
                     send_mail(

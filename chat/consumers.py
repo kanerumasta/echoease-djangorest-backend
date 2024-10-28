@@ -6,16 +6,16 @@ import json
 from channels.generic.websocket import AsyncWebsocketConsumer
 from django.contrib.auth.models import AnonymousUser
 from .serializers import MessageSerializer
+from notification.utils import notify_user_of_new_message
+from channels.layers import get_channel_layer
 
 class ChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         self.room_name = self.scope["url_route"]["kwargs"]["room_name"]
         self.room_group_name = f"chat_{self.room_name}"
         self.conversation = await self.get_conversation_or_404(self.room_name)
-        print(self.scope['user'])
         if self.scope['user'] == AnonymousUser():
             return
-        print(self.conversation)
         await self.channel_layer.group_add(self.room_group_name, self.channel_name)
         await self.accept()
 
@@ -34,7 +34,25 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 content = message
             )
             serializer = MessageSerializer(new_message)
-            print(serializer.data)
+
+
+             # Send message notification
+            receiver = await self.get_receiver()  # Use async method to fetch receiver
+            if receiver:
+                notif_channel_layer = get_channel_layer()
+                group_name = f"user_{receiver.id}"
+                sender = self.scope['user']
+                # Send message to receiver's WebSocket group
+                await notif_channel_layer.group_send(  # type: ignore
+                    group_name,
+                    {
+                        'message':message,
+                        'type': 'message_notification',
+                        'sender': f'{sender.first_name} {sender.last_name}',
+                    }
+                )
+
+
 
 
         await self.channel_layer.group_send(
@@ -50,3 +68,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
     @sync_to_async
     def get_conversation_or_404(self, room_name):
         return get_object_or_404(Conversation, code=room_name)
+    @sync_to_async
+    def get_receiver(self):
+        # Fetch the first participant who is not the sender (scope['user'])
+        return self.conversation.participants.exclude(id=self.scope['user'].id).first()

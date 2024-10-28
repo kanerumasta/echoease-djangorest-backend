@@ -98,7 +98,7 @@ class BookingDetailView(views.APIView):
     def get(self, request, id):
         booking = get_object_or_404(Booking, id=id)
         self.check_object_permissions(request, booking)
-        serializer = BookingSerializer(booking)
+        serializer = BookingSerializer(booking, context={'request':request})
 
         #make notification as read
         notifications = Notification.objects.filter(booking=booking,user = request.user)

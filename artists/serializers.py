@@ -3,6 +3,8 @@ from rest_framework import serializers
 from users.serializers import UserProfileSerializer
 from .models import PortfolioItemMedia ,Portfolio, PortfolioItem, Portfolio, Artist, ArtistApplication, Genre, IDType, Rate, ConnectionRequest
 from django.utils.dateformat import time_format
+from datetime import datetime
+from django.utils import timezone
 
 class PortfolioItemMediaSerializer(serializers.ModelSerializer):
     class Meta:
@@ -40,10 +42,15 @@ class ArtistSerializer(serializers.ModelSerializer):
     user = UserProfileSerializer(read_only=True)
     artist_rates = RateSerializer(read_only=True, many=True)
     genres = GenreSerializer(many=True)
-
+    portfolio = serializers.PrimaryKeyRelatedField(read_only=True)
+    is_new = serializers.SerializerMethodField()
     class Meta:
         model = Artist
         fields = '__all__'
+
+    def get_is_new(self, obj):
+        return obj.created_at >=  timezone.now() - timezone.timedelta(days=1)
+
 
     def to_representation(self, instance):
         representation =  super().to_representation(instance)

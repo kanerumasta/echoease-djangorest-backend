@@ -16,6 +16,7 @@ from booking.models import Booking
 from .permissions import IsArtist
 from django.utils import timezone
 from users.serializers import UserAccountSerializer
+from django.db.models import Min
 import time
 
 
@@ -38,8 +39,6 @@ from .models import Artist, PortfolioItem, Portfolio, Rate
 
 
 class ArtistView(APIView):
-     #ADD ISVERIFIED USER HERE
-
     def get_permissions(self):
         print(self.request.method)
         if self.request.method == 'GET':
@@ -74,19 +73,53 @@ class ArtistView(APIView):
         if current:
             user = request.user
             artist = get_object_or_404(Artist, user = user)
-            serializer = ArtistSerializer(artist)
+            serializer = ArtistSerializer(artist,context={'request':request})
             return Response(serializer.data, status=status.HTTP_200_OK)
         if slug:
             artist = get_object_or_404(Artist, slug = slug)
-            serializer = ArtistSerializer(artist)
+            serializer = ArtistSerializer(artist,context={'request':request})
             return Response(serializer.data, status = status.HTTP_200_OK)
         if pk:
             artist = get_object_or_404(Artist, id = pk)
-            serializer = ArtistSerializer(artist)
+            serializer = ArtistSerializer(artist,context={'request':request})
             return Response(serializer.data, status = status.HTTP_200_OK)
         else:
+            min_price = request.GET.get('min_price', None)
+            max_price = request.GET.get('max_price',None)
+            q = request.GET.get('q', None)
+            genres = request.GET.get('genres',None)
+            category = request.GET.get('category', None)
+
             artist_list = Artist.objects.all()
-            serializer = ArtistSerializer(artist_list, many=True)
+            if q is not None:
+                search_terms = q.split()
+                query = Q()
+                for term in search_terms:
+                    query |= (
+                        Q(stage_name__icontains=term) |
+                        Q(user__first_name__icontains=term) |
+                        Q(user__last_name__icontains=term)
+                    )
+
+                artist_list = artist_list.filter(query)
+            if category:
+                if category == 'new':
+                    artist_list = artist_list.filter(created_at__gte=timezone.now() - timezone.timedelta(days=30))
+
+            if genres is not None:
+                genres_list = genres.split(',')
+                print(genres_list)
+                artist_list = artist_list.filter(
+                    genres__in=genres_list
+                ).distinct()
+            for artist in artist_list:
+                print(artist)
+
+            if min_price is not None and max_price is not None:
+                annotated_artists = artist_list.annotate(min_rate=Min('artist_rates__amount'))
+                artist_list = annotated_artists.filter(min_rate__gte=min_price, min_rate__lte=max_price)
+
+            serializer = ArtistSerializer(artist_list, many=True, context={'request':request})
             return Response(serializer.data, status = status.HTTP_200_OK)
 
 
@@ -108,7 +141,7 @@ class PortfolioItemView(APIView):
     permission_classes=[IsArtist, IsAuthenticated]
 
     def post(self, request):
-        serializer = PortfolioItemSerializer(data=request.data)
+        serializer = PortfolioItemSerializer(data=request.data,context={'request':request})
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -142,7 +175,7 @@ class ArtistApplicationView(APIView):
                 return Response(status=status.HTTP_204_NO_CONTENT)
         try:
             applications = ArtistApplication.objects.all()
-            serializer = ArtistApplicationSerializer(applications, many = True)
+            serializer = ArtistApplicationSerializer(applications, many = True,context={'request':request})
             return Response(serializer.data, status = status.HTTP_200_OK)
         except Exception as e:
             print(e)
@@ -156,7 +189,7 @@ class ArtistApplicationView(APIView):
             application = ArtistApplication.objects.filter(user = user)
             if application.exists():
                 return Response({'message':'You already have an artist application.'},status = status.HTTP_409_CONFLICT)
-            serializer = ArtistApplicationSerializer(data = request.data)
+            serializer = ArtistApplicationSerializer(data = request.data,context={'request':request})
             if serializer.is_valid():
                 serializer.save(user=user)
                 return Response(serializer.data, status = status.HTTP_201_CREATED)
@@ -177,6 +210,8 @@ class ArtistApplicationView(APIView):
 
 
 class GenreView(APIView):
+
+    permission_classes = [AllowAny]
     def get(self, request, id=None):
 
         if id:
@@ -432,7 +467,7 @@ def set_date_unavailable(request):
 class ArtistFollowersView(APIView):
     def get(self, request, artist_id):
         artist = get_object_or_404(Artist, id=artist_id)
-        serializer = UserAccountSerializer(artist.followers, many=True)
+        serializer = UserAccountSerializer(artist.followers, many=True, context={'request':request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 

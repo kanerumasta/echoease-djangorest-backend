@@ -160,13 +160,13 @@ class UserView(APIView):
             user = get_object_or_404(UserAccount, id=id)
             if user.is_staff or user.is_superuser or not user.is_active:
                 return Response(status=status.HTTP_404_NOT_FOUND)
-            serializer = UserAccountSerializer(user)
+            serializer = UserAccountSerializer(user, context={'request':request})
             return Response(serializer.data, status=status.HTTP_200_OK)
 
         try:
             user = UserAccount.objects.get(pk = request.user.id)
             print('User',user)
-            serializer = UserAccountSerializer(user)
+            serializer = UserAccountSerializer(user,context={'request':request})
             return Response(serializer.data, status = status.HTTP_200_OK)
         except Exception as e:
             print(e)
@@ -175,7 +175,7 @@ class UserView(APIView):
 
     #picking role before booking | organizer | regular | bar owner
     def patch(self, request):
-        serializer = UserAccountSerializer(request.user,data = request.data, partial = True)
+        serializer = UserAccountSerializer(request.user,data = request.data, partial = True, context={'request':request})
         if serializer.is_valid():
             serializer.save()
             request.user.is_roled = True

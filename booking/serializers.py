@@ -2,6 +2,7 @@ from rest_framework import serializers
 from .models import Booking
 from users.serializers import UserAccountSerializer
 from artists.serializers import ArtistSerializer
+from dispute.serializers import DisputeSerializer
 from payment.models import Payment
 from artists.models import Artist, Rate
 
@@ -14,7 +15,7 @@ class RateSerializer(serializers.ModelSerializer):
 
 
 class BookingSerializer(serializers.ModelSerializer):
-
+    disputes = DisputeSerializer(many=True, read_only=True)
     client = UserAccountSerializer(read_only=True)
     artist = serializers.PrimaryKeyRelatedField(
         queryset=Artist.objects.all(),
