@@ -81,6 +81,9 @@ class UserAccount(AbstractBaseUser, PermissionsMixin):
     government_id = models.ImageField(upload_to="images/", null=True, blank=True)
     government_id_type = models.CharField(max_length=255, null=True, blank=True)
 
+    reputation_score = models.IntegerField(default = 100)
+
+
     @property
     def is_artist(self):
         return self.role == 'artist'
@@ -92,6 +95,16 @@ class UserAccount(AbstractBaseUser, PermissionsMixin):
     @property
     def full_name(self):
         return f'{self.first_name} {self.last_name}'
+
+    def decrease_reputation(self, points=5):
+        """Decrease reputation score but prevent it from going below zero."""
+        self.reputation_score = max(self.reputation_score - points, 0)
+        self.save()
+
+    def increase_reputation(self, points=1):
+        """Increase reputation score"""
+        self.reputation_score += points
+        self.save()
 
     objects = UserAccountManager()
 

@@ -3,6 +3,7 @@ from django.db import models
 from django.core.exceptions import ValidationError
 from django.contrib.auth import get_user_model
 from cryptography.fernet import Fernet
+from django.conf import settings
 
 
 
@@ -106,6 +107,26 @@ class Artist(models.Model):
     award_image3 = models.ImageField(upload_to="images/awards", null=True, blank=True)
 
     connections= models.ManyToManyField('self', symmetrical=True, blank=True)
+
+    #BANK DETAIL
+    account_holder_name = models.CharField(max_length=255, null=True, blank=True)
+    encrypted_account_number = models.BinaryField(max_length=255,null=True, blank=True)
+
+    def set_account_number(self, account_number):
+        if account_number:
+            cipher = Fernet(settings.ENCRYPTION_KEY)
+            self.encrypted_account_number = cipher.encrypt(account_number.encode())
+            self.save()
+        else:
+            self.encrypted_account_number = None
+            self.save()
+
+    def get_account_number(self):
+        if self.encrypted_account_number:
+            cipher = Fernet(settings.ENCRYPTION_KEY)
+            return cipher.decrypt(bytes(self.encrypted_account_number)).decode()
+        return None
+
 
 
     def __str__(self):

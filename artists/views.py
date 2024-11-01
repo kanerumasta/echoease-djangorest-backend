@@ -4,11 +4,12 @@ from django.db.models import Q
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.conf import settings
 import requests
+import time
 
 from rest_framework.views import APIView
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
-from rest_framework import status
+from rest_framework import status, pagination
 from rest_framework.permissions import IsAuthenticated, IsAdminUser,AllowAny
 from rest_framework.exceptions import ValidationError
 from .models import (ArtistApplication, Artist, Genre, IDType, ConnectionRequest, PortfolioItemMedia)
@@ -37,10 +38,29 @@ from .serializers import (
                           )
 from .models import Artist, PortfolioItem, Portfolio, Rate
 
+class ArtistPagination(pagination.PageNumberPagination):
+    page_size = 6
+    max_page_size=20
+    page_size_query_param = 'page_size'
+    page_query_param = 'page'
+    def get_paginated_response(self, data):
+        return Response({
+            'links': {
+                'next': self.get_next_link(),
+                'previous': self.get_previous_link()
+            },
+            'total_pages': self.page.paginator.num_pages,
+            'current_page': self.page.number,
+            'has_next': self.page.has_next(),
+            'has_previous': self.page.has_previous(),
+            'count': self.page.paginator.count,
+            'results': data
+        },status=status.HTTP_200_OK)
 
 class ArtistView(APIView):
+
+    pagination_class = ArtistPagination
     def get_permissions(self):
-        print(self.request.method)
         if self.request.method == 'GET':
             return [AllowAny()]
         return super().get_permissions()
@@ -108,19 +128,18 @@ class ArtistView(APIView):
 
             if genres is not None:
                 genres_list = genres.split(',')
-                print(genres_list)
+
                 artist_list = artist_list.filter(
                     genres__in=genres_list
                 ).distinct()
-            for artist in artist_list:
-                print(artist)
 
             if min_price is not None and max_price is not None:
                 annotated_artists = artist_list.annotate(min_rate=Min('artist_rates__amount'))
                 artist_list = annotated_artists.filter(min_rate__gte=min_price, min_rate__lte=max_price)
-
-            serializer = ArtistSerializer(artist_list, many=True, context={'request':request})
-            return Response(serializer.data, status = status.HTTP_200_OK)
+            paginator = self.pagination_class()
+            paginated_artists = paginator.paginate_queryset(artist_list, request)
+            serializer = ArtistSerializer(paginated_artists, many=True, context={'request':request})
+            return paginator.get_paginated_response(serializer.data)
 
 
 
@@ -185,7 +204,6 @@ class ArtistApplicationView(APIView):
         #check user is verified here
         try:
             user = request.user
-            print(request.data)
             application = ArtistApplication.objects.filter(user = user)
             if application.exists():
                 return Response({'message':'You already have an artist application.'},status = status.HTTP_409_CONFLICT)
@@ -233,7 +251,6 @@ class GenreView(APIView):
 class IDTypesView(APIView):
 
     def get_permissions(self):
-        print(self.request.method)
         if self.request.method == 'GET':
             return [AllowAny()]
         return super().get_permissions()
@@ -257,7 +274,6 @@ class RateView(APIView):
 
 
     def post(self, request):
-        print(request.data)
         serializer = RateSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
@@ -306,7 +322,6 @@ class ConnectionRequestView(APIView):
 
     def post(self, request):
         serializer = ConnectionRequestSerializer(data = request.data)
-        print(request.data)
         try:
             if serializer.is_valid():
                     serializer.save()
@@ -317,7 +332,6 @@ class ConnectionRequestView(APIView):
                 print(e)
                 return Response({'message':str(e)}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            print(type(e))
             print(e)
             return Response({'error':str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 

@@ -41,28 +41,7 @@ class Payment(models.Model):
         ('payout', 'Payout'),
         ('refund', 'Refund'),
     ])
-#     {
-#   "data": {
-#     "id": "ref_LXZGWXQt3SBzFT9UiENCBNHD",
-#     "type": "refund",
-#     "attributes": {
-#       "amount": 176500,
-#       "balance_transaction_id": null,
-#       "currency": "PHP",
-#       "livemode": false,
-#       "metadata": null,
-#       "notes": null,
-#       "payment_id": "pay_VnhgmqA65riawtrVvQGAqZaF",
-#       "payout_id": null,
-#       "reason": "others",
-#       "status": "pending",
-#       "available_at": 1729587600,
-#       "created_at": 1729337142,
-#       "refunded_at": null,
-#       "updated_at": 1729337142
-#     }
-#   }
-# }
+
 
     def refund(self):
         print('attempt refund now')
@@ -98,3 +77,12 @@ class Payment(models.Model):
 
     def __str__(self):
         return f'Payment {self.pk} ({self.payment_type}) - {self.booking}'
+
+class Payout(models.Model):
+    booking = models.ForeignKey(Booking, related_name='bookings', on_delete=models.CASCADE)
+    artist = models.ForeignKey(Artist, related_name='artists', on_delete=models.CASCADE)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    net_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    payout_date = models.DateTimeField(auto_now_add=True)
+    platform_fee = models.DecimalField(max_digits=10, decimal_places=2)
+    reference_id = models.CharField(max_length=255)

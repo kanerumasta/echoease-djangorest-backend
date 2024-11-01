@@ -77,7 +77,7 @@ class ArtistApplicationAdmin(admin.ModelAdmin):
                     Notification.objects.create(
                         user=application.user,
                         notification_type="application_accepted",
-                        title="Welcome to EchoEase, Christian Bautista!",
+                        title=f"Welcome to EchoEase, {application.user.first_name} {application.user.last_name}",
                         description="We’re pleased to inform you that your application has been approved. Congratulations on joining EchoEase as an official Echoee! Your talent is now part of a vibrant community of artists. Start connecting with fans and venues, and showcase your music on a platform designed to elevate your artistry. Welcome aboard!"
 
                     )
