@@ -60,6 +60,7 @@ INSTALLED_APPS = [
     'schedule',
     'transaction',
     'review',
+    'custom_admin',
     #  'background_task',
 
 
@@ -148,9 +149,15 @@ USE_TZ = True
 
 
 STATIC_URL = '/static/'
-STATIC_ROOT = BASE_DIR / 'static'
+
 MEDIA_URL = f'media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+STATICFILES_DIRS = [
+    BASE_DIR / "static",  # Add this if your static folder is at the project level
+]
+
+STATIC_ROOT = BASE_DIR / "staticfiles"
 
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(days=20),

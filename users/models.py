@@ -49,6 +49,7 @@ class UserAccount(AbstractBaseUser, PermissionsMixin):
     )
     is_verified = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
+    is_suspended = models.BooleanField(default=False)
     is_staff = models.BooleanField(default=False)
     is_superuser = models.BooleanField(default=False)
     business_boost_opted = models.BooleanField(default=False)
@@ -72,7 +73,6 @@ class UserAccount(AbstractBaseUser, PermissionsMixin):
     doc_image3 = models.ImageField(upload_to="images/", null=True, blank=True)
     doc_image4 = models.ImageField(upload_to="images/", null=True, blank=True)
     doc_image5 = models.ImageField(upload_to="images/", null=True, blank=True)
-
 
     #for bar owners
     business_permit = models.ImageField(upload_to="images/",null=True, blank=True)
@@ -104,6 +104,11 @@ class UserAccount(AbstractBaseUser, PermissionsMixin):
     def increase_reputation(self, points=1):
         """Increase reputation score"""
         self.reputation_score += points
+        self.save()
+
+    def suspend(self):
+        """Set the user's account as suspended."""
+        self.is_suspended = True
         self.save()
 
     objects = UserAccountManager()

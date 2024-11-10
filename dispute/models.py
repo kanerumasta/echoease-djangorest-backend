@@ -19,6 +19,7 @@ class Dispute(models.Model):
     DISPUTE_STATUS = [
         ('open','Open'),
         ('closed','Closed'),
+        ('cancelled','Cancelled'),
         ('under_review','Under Review'),
         ('resolved','Resolved'),
         ('escalated','Escalated'),

@@ -8,6 +8,7 @@ from rest_framework import status
 from rest_framework.response import Response
 from booking.models import Booking
 from artists.models import Artist
+from .models import Dispute
 
 # Create your views here.
 
@@ -37,3 +38,10 @@ class DisputeEvidenceView(APIView):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         print(serializer.errors)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class DisputeCancelView(APIView):
+    def post(self, request,dispute_id, *args, **kwargs):
+        dispute = get_object_or_404(Dispute, id=dispute_id)
+        dispute.status = 'cancelled'
+        dispute.save()
+        return Response(status=status.HTTP_204_NO_CONTENT)

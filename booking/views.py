@@ -75,15 +75,40 @@ class BookingView(views.APIView):
 
 
     def get(self, request):
-        status_filter = request.query_params.get('status')
+        status_filter = request.query_params.get('status', None)
+        q = request.query_params.get('q', None)
+        sort_by = request.query_params.get('sort_by', None)
+        sort_order = request.query_params.get('sort_order', None) #asc or desc
+        paginate = request.query_params.get('paginate', False)
+        print('paginate',paginate )
+        print(type(paginate))
         bookings = Booking.objects.filter(Q(client=request.user) | Q(artist__user=request.user))
 
+        if q is not None:
+            search_terms = q.split()
+            query = Q()
+            for term in search_terms:
+                query |= (
+                    Q(booking_reference__icontains=term) |
+                    Q(event_name__icontains=term) |
+                    Q(client__first_name__icontains=term) |
+                    Q(client__last_name__icontains=term) |
+                    Q(artist__user__first_name__icontains=term) |
+                    Q(artist__user__last_name__icontains=term) |
+                    Q(status__icontains=term)
+                )
+            bookings = bookings.filter(query)
+
         # Apply the status filter if it is provided
-        if status_filter:
-            bookings = bookings.filter(status=status_filter)
+        if status_filter is not None:
+            statuses = status_filter.split(',')
+            bookings = bookings.filter(status__in=statuses)
+        if sort_by is not None:
+            order = f'{"-" if sort_order == "desc" else "" }{sort_by}'
+            bookings = bookings.order_by(order)
 
         # Only paginate if we're retrieving all bookings
-        if not status_filter:
+        if str(paginate).lower() == 'true':
             paginator = self.pagination_class()
             paginated_bookings = paginator.paginate_queryset(bookings, request)
             serializer = BookingSerializer(paginated_bookings, many=True)
