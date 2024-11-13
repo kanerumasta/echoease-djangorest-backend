@@ -9,6 +9,7 @@ from rest_framework.views import APIView
 from rest_framework import status
 from rest_framework.decorators import api_view
 from django.conf import settings
+import time
 from .serializers import (
     ConversationSerializer
 )
@@ -63,7 +64,7 @@ class ConversationView(APIView):
 
 
         # Step 3: Paginate messages (show 15 messages per page)
-        paginator = Paginator(messages, 8)
+        paginator = Paginator(messages, 15)
         page_number = request.GET.get('page', 1)
         page_obj = paginator.get_page(page_number)
 
@@ -82,6 +83,7 @@ class ConversationView(APIView):
             'current_page': page_obj.number,
             'total_pages': paginator.num_pages,
         }
+
 
         return JsonResponse(response_data)
 

@@ -39,7 +39,7 @@ from .serializers import (
 from .models import Artist, PortfolioItem, Portfolio, Rate
 
 class ArtistPagination(pagination.PageNumberPagination):
-    page_size = 6
+    page_size = 4
     max_page_size=20
     page_size_query_param = 'page_size'
     page_query_param = 'page'
@@ -89,6 +89,7 @@ class ArtistView(APIView):
 
 
     def get(self, request,pk=None, slug=None):
+        print('auth',request.headers.get('Authorization'))
         current = request.GET.get('current', 'False').lower() == 'true'
         if current:
             user = request.user
@@ -166,6 +167,7 @@ class ArtistView(APIView):
             paginator = self.pagination_class()
             paginated_artists = paginator.paginate_queryset(artist_list, request)
             serializer = ArtistSerializer(paginated_artists, many=True, context={'request':request})
+            time.sleep(2)
             return paginator.get_paginated_response(serializer.data)
 
 

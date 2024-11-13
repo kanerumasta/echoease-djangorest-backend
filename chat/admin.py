@@ -6,6 +6,10 @@ class CustomAdminModel (admin.ModelAdmin):
     list_display_links = ['pk','created_at']
     ordering = ['created_at']
 
+class MessageAdminModel(admin.ModelAdmin):
+    list_display = ['pk','created_at', 'author']
+    list_display_links = ['pk','created_at']
+    ordering = ['created_at']
 
 class ConversationAdmin(admin.ModelAdmin):
     list_display = ('pk','get_participants')
@@ -17,4 +21,4 @@ class ConversationAdmin(admin.ModelAdmin):
 
 
 admin.site.register(Conversation, ConversationAdmin)
-admin.site.register(Message, CustomAdminModel)
+admin.site.register(Message, MessageAdminModel)

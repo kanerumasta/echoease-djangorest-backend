@@ -11,21 +11,25 @@ from channels.layers import get_channel_layer
 
 class ChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
+        print('attempt to connect')
         self.room_name = self.scope["url_route"]["kwargs"]["room_name"]
         self.room_group_name = f"chat_{self.room_name}"
         self.conversation = await self.get_conversation_or_404(self.room_name)
         if self.scope['user'] == AnonymousUser():
+            print('anon')
             return
         await self.channel_layer.group_add(self.room_group_name, self.channel_name)
         await self.accept()
 
     async def disconnect(self, close_code):
+        print(close_code)
         await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
 
 
 #PUT AUTHOR TO CONVERSATION
     async def receive(self, text_data):
         message = text_data
+        print(message)
 
         if self.scope['user']:
             new_message = await sync_to_async(Message.objects.create)(

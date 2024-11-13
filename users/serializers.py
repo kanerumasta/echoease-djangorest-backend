@@ -15,7 +15,7 @@ class ProfileSerializer(ModelSerializer):
         representation['complete_address'] = f'{instance.street}, {instance.brgy}, {instance.municipality}, {instance.province}, {instance.country}'
         representation['phone'] = f'+63{instance.phone}'
         if instance.dob:
-            representation['dob'] = instance.dob.strftime('%B, %d, %Y')
+            representation['formatted_dob'] = instance.dob and instance.dob.strftime('%B, %d, %Y')
         else:
             representation['dob'] = None
 
