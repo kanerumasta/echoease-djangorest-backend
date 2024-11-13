@@ -27,7 +27,7 @@ SECRET_KEY = getenv('DJANGO_SECRET_KEY', get_random_secret_key())
 
 DEBUG = getenv('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = getenv('DJANGO_ALLOWED_HOSTS','127.0.0.1').split(',')
+ALLOWED_HOSTS = getenv('DJANGO_ALLOWED_HOSTS','127.0.0.1,3ded-143-44-165-29.ngrok-free.app').split(',')
 
 # ALLOWED_HOSTS = ["192.168.1.242"]
 
@@ -102,10 +102,6 @@ ASGI_APPLICATION = 'core.asgi.application'
 
 #edit
 DATABASES = {
-    # 'default': {
-    #     'ENGINE': 'django.db.backends.sqlite3',
-    #     'NAME': BASE_DIR / 'db.sqlite3',
-    # }
     'default':{
         "ENGINE":"django.db.backends.postgresql_psycopg2",
         "NAME":'echoeasev3',
@@ -113,7 +109,6 @@ DATABASES = {
         'PASSWORD':'011456',
         'HOST':'127.0.0.1',
         'PORT':'5432'
-
     }
 }
 
