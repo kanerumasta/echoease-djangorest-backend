@@ -57,6 +57,7 @@ class BookingPagination(pagination.PageNumberPagination):
 class BookingView(views.APIView):
     pagination_class = BookingPagination
     def post(self, request):
+        print(request.data)
         artist_id = request.data.get('artist')
         artist = get_object_or_404(Artist, id = artist_id)
         serializer = BookingSerializer(data = request.data)
@@ -130,11 +131,7 @@ class BookingDetailView(views.APIView):
         for notif in notifications:
             if not notif.is_read:
                 notif.read()
-
-
         return Response(serializer.data, status=status.HTTP_200_OK)
-
-
 
 class BookingConfirmView(views.APIView):
     permission_classes = [IsAuthenticated, IsInvolved]
@@ -186,7 +183,6 @@ class BookingCancelView(views.APIView):
         # Create notifications
         create_booking_cancelled_notification(booking.pk)
         notify_client_of_cancelled_booking(user=booking.client, booking=booking)
-
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 class PendingPaymentsView(views.APIView):
@@ -205,6 +201,7 @@ class PendingPaymentsView(views.APIView):
              )
         serializer = BookingSerializer(bookings, many=True)
         return Response(serializer.data, status = status.HTTP_200_OK)
+
 class UpcomingEventsView(views.APIView):
     def get(self, request):
         print()

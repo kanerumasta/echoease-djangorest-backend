@@ -27,9 +27,9 @@ SECRET_KEY = getenv('DJANGO_SECRET_KEY', get_random_secret_key())
 
 DEBUG = getenv('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = getenv('DJANGO_ALLOWED_HOSTS','127.0.0.1,3ded-143-44-165-29.ngrok-free.app').split(',')
+# ALLOWED_HOSTS = getenv('DJANGO_ALLOWED_HOSTS','127.0.0.1,8e6d-143-44-165-29.ngrok-free.app,192.168.1.242').split(',')
 
-# ALLOWED_HOSTS = ["192.168.1.242"]
+ALLOWED_HOSTS = ["*"]
 
 
 # Application definition

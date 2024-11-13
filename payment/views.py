@@ -469,30 +469,37 @@ class CreateInvoiceView(APIView):
     def post(self, request):
         booking_id = request.data.get('booking_id')
         payment_type = request.data.get('payment_type')
+        redirect_url = request.data.get('redirect_url')
         valid_payment_type = is_valid_payment_type(payment_type)
         if not valid_payment_type:
              return Response({'message':'Not a valid payment type'},status=status.HTTP_400_BAD_REQUEST)
-        if not booking_id or not payment_type:
+        if not booking_id or not payment_type or not redirect_url:
             return Response({'message':'Missing booking_id and payment_type'},status=status.HTTP_400_BAD_REQUEST)
         booking = get_object_or_404(Booking, id=booking_id)
+        if booking.amount is not None:
+            if payment_type == 'downpayment':
+                has_downpayment = Payment.objects.filter(payment_type='downpayment',booking=booking).exists()
+                if has_downpayment:
+                    return Response({'message':'Downpayment already exists'},status=status.HTTP_400_BAD_REQUEST)
+                amount = booking.amount * Decimal(0.20)
+            if payment_type == 'final_payment':
+                downpayment = Payment.objects.filter(booking = booking, payment_type = 'downpayment').first()
+                if not downpayment:
+                    return Response({'message':'No downpayment found'},status=status.HTTP_400_BAD_REQUEST)
+                has_final_payment = Payment.objects.filter(payment_type='final_payment',booking=booking)
+                if has_final_payment:
+                    return Response({'message':'Final payment already exists'},status=status.HTTP_400_BAD_REQUEST)
+                amount = booking.amount - downpayment.amount
 
-        if payment_type == 'downpayment':
-            amount = booking.amount * Decimal(0.10)
-        if payment_type == 'final_payment':
-            downpayment = Payment.objects.filter(booking = booking, payment_type = 'downpayment').first()
-            if not downpayment:
-                return Response({'message':'No downpayment found'},status=status.HTTP_400_BAD_REQUEST)
-            amount = booking.amount - downpayment.amount
-
-        invoice_url = create_payment_invoice(
-            reference_id=booking.booking_reference,
-            amount= float(amount),
-            customer_email=booking.client.email,
-            payment_type=payment_type
-            )
-
-        if invoice_url is not None:
-            return Response({"invoice_url": invoice_url}, status=status.HTTP_200_OK)
+            invoice_url = create_payment_invoice(
+                reference_id=booking.booking_reference,
+                amount= float(amount),
+                customer_email=booking.client.email,
+                payment_type=payment_type,
+                redirect_url=redirect_url
+                )
+            if invoice_url is not None:
+                return Response({"invoice_url": invoice_url}, status=status.HTTP_200_OK)
         return Response({'message':'ERROR creating invoice'},status=status.HTTP_400_BAD_REQUEST)
 import json
 from django.http import JsonResponse
@@ -548,25 +555,30 @@ def invoice_webhook(request):
         if status == "PAID" and metadata:
             payment_type = metadata.get('payment_type')
             if payment_type:
-                # Create payment entry in the database
-                payment = Payment.objects.create(
-                    payment_status='paid',
-                    booking=booking,
-                    amount=amount,
-                    net_amount=amount,
-                    payment_method=payment_method,
-                    payer_channel=payment_channel,
-                    payer_email=payer_email,
-                    payment_type=payment_type
-                )
-                payment.payment_reference  = f'PAY{payment.pk:06d}'
-                payment.save()
-                print(f"Payment recorded for booking_reference: {booking_reference}")
+                if payment_type == 'downpayment':
+                    print('HERE DOWNPAYMENT')
+                    # Create payment entry in the database
+                    payment = Payment.objects.create(
+                        payment_status='paid',
+                        booking=booking,
+                        amount=amount,
+                        net_amount=amount,
+                        payment_method=payment_method,
+                        payer_channel=payment_channel,
+                        payer_email=payer_email,
+                        payment_type=payment_type
+                    )
+                    payment.payment_reference  = f'PAY{payment.pk:06d}'
+                    payment.save()
+                    booking.status = 'approved'
+                    booking.save()
+                    print(f"Payment recorded for booking_reference: {booking_reference}")
 
                 #Send Dibursement if final payment
-                if payment_type == 'final_payment':
+                if payment_type == 'final_payment' and booking.amount is not None:
                     payout_amount = booking.amount - (booking.amount * Decimal(0.05))
                     payout = send_payout(amount=payout_amount,booking_id=booking.pk, channel_code="PH_GCASH")#CHANGE
+
             else:
                 print(f"Payment type not found in metadata for booking_reference: {booking_reference}")
         else:
@@ -613,6 +625,7 @@ def payout_webhook(request):
                         )
                 payment.payment_reference  = f'PAY{payment.pk:06d}'
                 payment.save()
+                booking.complete()
             return JsonResponse({"status": "success"}, status=200)
         else:
             return JsonResponse({'message':'Error'}, status=400)

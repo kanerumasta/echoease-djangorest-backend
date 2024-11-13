@@ -12,7 +12,7 @@ class Booking(models.Model):
     booking_reference = models.CharField(max_length=15, blank=True, unique=True)
     artist = models.ForeignKey(Artist, on_delete=models.CASCADE, verbose_name='Echoee', related_name='bookings')
     client = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True, verbose_name='Echoer', related_name='bookings')
-    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     event_name = models.CharField(max_length=100)
     event_date = models.DateField()
     start_time = models.TimeField()

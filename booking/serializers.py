@@ -27,7 +27,7 @@ class BookingSerializer(serializers.ModelSerializer):
     )
     artist_details = ArtistSerializer(source='artist', read_only=True)
     rate_details = RateSerializer(source='rate', read_only=True)
-    service_fee = serializers.SerializerMethodField()
+    # service_fee = serializers.SerializerMethodField()
     downpayment_amount = serializers.SerializerMethodField()
     is_event_due = serializers.BooleanField(read_only=True)
 
@@ -35,11 +35,11 @@ class BookingSerializer(serializers.ModelSerializer):
         model = Booking
         fields = '__all__'
 
-    def get_service_fee(self, obj):
-        downpayment = Payment.objects.filter(booking=obj, payment_type='downpayment').first()
-        if downpayment:
-            return downpayment.service_fee
-        return None
+    # def get_service_fee(self, obj):
+    #     downpayment = Payment.objects.filter(booking=obj, payment_type='downpayment').first()
+    #     if downpayment:
+    #         return downpayment.service_fee
+    #     return None
     def get_downpayment_amount(self,obj):
         return obj.calculate_downpayment()
 
