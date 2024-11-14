@@ -555,24 +555,24 @@ def invoice_webhook(request):
         if status == "PAID" and metadata:
             payment_type = metadata.get('payment_type')
             if payment_type:
-                if payment_type == 'downpayment':
-                    print('HERE DOWNPAYMENT')
                     # Create payment entry in the database
-                    payment = Payment.objects.create(
-                        payment_status='paid',
-                        booking=booking,
-                        amount=amount,
-                        net_amount=amount,
-                        payment_method=payment_method,
-                        payer_channel=payment_channel,
-                        payer_email=payer_email,
-                        payment_type=payment_type
-                    )
-                    payment.payment_reference  = f'PAY{payment.pk:06d}'
-                    payment.save()
-                    booking.status = 'approved'
-                    booking.save()
-                    print(f"Payment recorded for booking_reference: {booking_reference}")
+                payment = Payment.objects.create(
+                    user = booking.client,
+                    payment_status='paid',
+                    booking=booking,
+                    amount=amount,
+                    net_amount=amount,
+                    payment_method=payment_method,
+                    payer_channel=payment_channel,
+                    payer_email=payer_email,
+                    payment_type=payment_type,
+                    title=f'{'final_payment' if payment_type == 'final payment' else payment_type} for Booking {booking.artist.user.first_name} {booking.artist.user.last_name}'
+                )
+                payment.payment_reference  = f'PAY{payment.pk:06d}'
+                payment.save()
+                booking.status = 'approved'
+                booking.save()
+                print(f"Payment recorded for booking_reference: {booking_reference}")
 
                 #Send Dibursement if final payment
                 if payment_type == 'final_payment' and booking.amount is not None:
@@ -615,13 +615,16 @@ def payout_webhook(request):
                     return JsonResponse({'message':'Error'}, status=400)
             if booking is not None:
                 payment = Payment.objects.create(
+                            user = booking.artist.user,
                             payment_status='paid',
                             booking=booking,
                             amount=amount,
                             net_amount=amount,
                             payment_method=payment_method,
                             payer_channel=payment_channel,
-                            payment_type="payout"
+                            payment_type="payout",
+                            title=f'Booking payment from {booking.client.first_name} {booking.client.last_name}'
+
                         )
                 payment.payment_reference  = f'PAY{payment.pk:06d}'
                 payment.save()

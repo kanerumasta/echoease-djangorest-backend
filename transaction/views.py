@@ -9,7 +9,7 @@ from artists.models import Artist
 from .serializers import TransactionSerializer
 
 class TransactionPagination(pagination.PageNumberPagination):
-    page_size = 5
+    page_size = 10
     page_size_query_param = 'page_size'
     max_page_size = 20
     def get_paginated_response(self, data):
@@ -38,7 +38,7 @@ class TransactionView(APIView):
         if request.user.role == 'artist':
             artist = get_object_or_404(Artist, user = request.user)
             transactions = Transaction.objects.filter(artist=artist)
-        transactions = Transaction.objects.filter(client = request.user)
+        transactions = Transaction.objects.filter(user = request.user)
         paginator = self.pagination_class()
         page = paginator.paginate_queryset(transactions, request)
         serializer = TransactionSerializer(page, many=True)

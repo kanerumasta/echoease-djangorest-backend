@@ -6,6 +6,7 @@ from decimal import Decimal
 import base64
 import requests
 
+
 USER =  settings.AUTH_USER_MODEL
 from django.db import models
 from booking.models import Booking
@@ -43,6 +44,8 @@ class Payment(models.Model):
         ('payout', 'Payout'),
         ('refund', 'Refund'),
     ]
+    user = models.ForeignKey(USER,on_delete=models.CASCADE, null=True, blank=True) #payer or receiver
+    title = models.TextField(null=True, blank=True)
     payment_reference = models.CharField(max_length=15, blank=True)
     payment_status = models.CharField(max_length=50, default='pending')
     booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name="payments")

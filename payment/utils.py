@@ -61,7 +61,7 @@ def send_payout(booking_id,amount, channel_code,description="Payout Payment"):
     if not artist.account_holder_name or not artist.get_account_number() or not artist.channel_code:
         print('artist channel code or account holder name or account number is null')
         return None
-    idempotence_key = f'Payout-{booking.booking_reference}'
+    idempotence_key = f'Payout||{booking.booking_reference}'
     create_payout_request = {
         "reference_id": str(booking.booking_reference or booking.pk),
         "channel_code":channel_code,

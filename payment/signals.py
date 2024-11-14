@@ -28,11 +28,17 @@ from booking.models import Booking
 def create_payment_transaction(sender, instance, created, **kwargs):
     if created:
         transaction_type = instance.payment_type
+        if transaction_type == 'payout':
+            user = instance.booking.artist.user
+        else:
+            user  = instance.booking.client
         try:
             Transaction.objects.create(
+                payment=instance,
                 transaction_type=transaction_type,
                 booking=instance.booking,
-                amount=instance.amount
+                amount=instance.amount,
+                user = user
             )
             print(f'Created transaction for booking {instance.booking.id}')
         except Exception as e:
