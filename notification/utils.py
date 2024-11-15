@@ -58,6 +58,23 @@ def notify_artist_of_paid_downpayment(artist, booking): # new upcoming event
             'booking_type':'paid_downpayment'
         }
     )
+def notify_artist_of_paid_final_payment(artist, booking): # new upcoming event
+    channel_layer = get_channel_layer()
+    group_name = f"user_{artist.id}"
+
+    # Send message to artist's WebSocket group
+    async_to_sync(channel_layer.group_send)( # type: ignore
+        group_name,
+        {
+            'type': 'booking_notification',  # This should match the function name in ArtistConsumer
+            'booking': {
+                'id': booking.id,
+                'client': f'{booking.client.first_name} {booking.client.last_name}',
+                'event_date': str(booking.event_date)
+            },
+            'booking_type':'payout'
+        }
+    )
 
 def notify_client_of_cancelled_booking(user, booking):
     channel_layer = get_channel_layer()

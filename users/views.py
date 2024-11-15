@@ -222,7 +222,19 @@ class PasswordResetView(APIView):
             print(e)
             return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+class DeactivateAccountView(APIView):
+    def post(self, request):
+        user = request.user
+        user.is_deactivated = True
+        user.save()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
+class ActivateAccountView(APIView):
+    def post(self, request):
+        user = request.user
+        user.is_deactivated = False
+        user.save()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 @api_view(['GET'])

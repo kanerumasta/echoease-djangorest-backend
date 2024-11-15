@@ -43,7 +43,8 @@ class NotificationConsumer(AsyncWebsocketConsumer):
             'cancelled_booking': 'The booking has been canceled by the client.',
             'accepted_booking': 'Your booking request has been confirmed.',
             'rejected_booking': 'The booking request has been declined.',
-            'paid_downpayment': 'A down payment for your booking has been successfully received.'
+            'paid_downpayment': 'A down payment for your booking has been successfully received.',
+            'payout': 'You received a payment for you booking.'
         }
 
         # Get the message from the dictionary, or use a default message for unknown booking types

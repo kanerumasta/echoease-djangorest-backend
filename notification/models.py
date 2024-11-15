@@ -17,6 +17,7 @@ class Notification(models.Model):
         ('payment_reminder', 'Payment Reminder'),
         ('event_reminder', 'Event Reminder'),
         ('downpayment_paid', 'Down Payment Paid'),
+        ('dibursement_received', 'Dibursement Received'),
 
     ]
 

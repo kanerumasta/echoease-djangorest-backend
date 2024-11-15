@@ -114,24 +114,6 @@ DATABASES = {
 
 
 
-
-
-# AUTH_PASSWORD_VALIDATORS = [
-#     {
-#         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-#     },
-#     {
-#         'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-#     },
-#     {
-#         'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-#     },
-#     {
-#         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-#     },
-# ]
-
-
 LANGUAGE_CODE = 'en-us'
 
 TIME_ZONE = 'UTC'
@@ -229,7 +211,7 @@ EMAIL_HOST_USER = getenv('DEFAULT_FROM_EMAIL')
 EMAIL_HOST_PASSWORD = getenv('EMAIL_HOST_PASSWORD')
 
 SITE_NAME = 'Echoease'
-DOMAIN = getenv('DOMAIN', 'localhost:3000')
+DOMAIN = getenv('DOMAIN', '192.168.1.242:3000')
 
 
 

@@ -89,19 +89,19 @@ class ArtistView(APIView):
 
 
     def get(self, request,pk=None, slug=None):
-        print('auth',request.headers.get('Authorization'))
+
         current = request.GET.get('current', 'False').lower() == 'true'
         if current:
             user = request.user
-            artist = get_object_or_404(Artist, user = user,user__is_suspended = False)
+            artist = get_object_or_404(Artist, user = user,user__is_suspended = False,user__is_deactivated=False)
             serializer = ArtistSerializer(artist,context={'request':request})
             return Response(serializer.data, status=status.HTTP_200_OK)
         if slug:
-            artist = get_object_or_404(Artist, slug = slug,user__is_suspended = False)
+            artist = get_object_or_404(Artist, slug = slug,user__is_suspended = False,user__is_deactivated=False)
             serializer = ArtistSerializer(artist,context={'request':request})
             return Response(serializer.data, status = status.HTTP_200_OK)
         if pk:
-            artist = get_object_or_404(Artist, id = pk, user__is_suspended=False)
+            artist = get_object_or_404(Artist, id = pk, user__is_suspended=False, user__is_deactivated=False)
             serializer = ArtistSerializer(artist,context={'request':request})
             return Response(serializer.data, status = status.HTTP_200_OK)
         else:
@@ -111,7 +111,7 @@ class ArtistView(APIView):
             genres = request.GET.get('genres',None)
             category = request.GET.get('category', None)
 
-            artist_list = Artist.objects.filter(user__is_suspended=False).annotate(
+            artist_list = Artist.objects.filter(user__is_suspended=False, user__is_deactivated=False).annotate(
                         total_bookings = Count('bookings__reviews'),
                         average_rating = Avg('bookings__reviews__rating'),
                         genre_count=Count('genres'),
@@ -167,7 +167,7 @@ class ArtistView(APIView):
             paginator = self.pagination_class()
             paginated_artists = paginator.paginate_queryset(artist_list, request)
             serializer = ArtistSerializer(paginated_artists, many=True, context={'request':request})
-            time.sleep(2)
+
             return paginator.get_paginated_response(serializer.data)
 
 

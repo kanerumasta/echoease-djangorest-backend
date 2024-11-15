@@ -49,6 +49,7 @@ class UserAccount(AbstractBaseUser, PermissionsMixin):
     )
     is_verified = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
+    is_deactivated = models.BooleanField(default = False)
     is_suspended = models.BooleanField(default=False)
     is_staff = models.BooleanField(default=False)
     is_superuser = models.BooleanField(default=False)

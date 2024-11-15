@@ -37,7 +37,7 @@ class TransactionView(APIView):
             return Response(serializer.data, status=status.HTTP_200_OK)
         if request.user.role == 'artist':
             artist = get_object_or_404(Artist, user = request.user)
-            transactions = Transaction.objects.filter(artist=artist)
+            transactions = Transaction.objects.filter(user=artist.user)
         transactions = Transaction.objects.filter(user = request.user)
         paginator = self.pagination_class()
         page = paginator.paginate_queryset(transactions, request)

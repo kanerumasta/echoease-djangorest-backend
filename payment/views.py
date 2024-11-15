@@ -13,7 +13,7 @@ from django.conf import settings
 from pprint import pprint
 import base64
 import requests
-from notification.utils import notify_artist_of_paid_downpayment
+from notification.utils import notify_artist_of_paid_downpayment,notify_artist_of_paid_final_payment
 from notification.models import Notification
 from django.conf import settings
 from .utils import send_payout, create_payment_invoice, get_invoice_details, is_valid_payment_type
@@ -88,16 +88,16 @@ USER = settings.AUTH_USER_MODEL
 #                 )
 #                 print("Downpayment created successfully.")
 #                 #create notif
-#                 # notification_choices = [
-#                 #     ('admin', 'Admin'),
-#                 #     ('message', 'Message'),
-#                 #     ('new_booking', 'New Booking'),
-#                 #     ('new_follower', 'New Follower'),
-#                 #     ('booking_confirmation', 'Booking Confirmation'),
-#                 #     ('booking_rejected', 'Booking Rejected'),
-#                 #     ('payment_reminder', 'Payment Reminder'),
-#                 #     ('event_reminder', 'Event Reminder'),
-#                 # ]
+#                 notification_choices = [
+#                     ('admin', 'Admin'),
+#                     ('message', 'Message'),
+#                     ('new_booking', 'New Booking'),
+#                     ('new_follower', 'New Follower'),
+#                     ('booking_confirmation', 'Booking Confirmation'),
+#                     ('booking_rejected', 'Booking Rejected'),
+#                     ('payment_reminder', 'Payment Reminder'),
+#                     ('event_reminder', 'Event Reminder'),
+#                 ]
 
 #                 # user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,null=True, related_name='booking_notifications')
 #                 # notification_type = models.CharField(max_length=50, choices=notification_choices)
@@ -573,7 +573,18 @@ def invoice_webhook(request):
                 booking.status = 'approved'
                 booking.save()
                 print(f"Payment recorded for booking_reference: {booking_reference}")
-
+                if payment_type == 'downpayment':
+                    try:
+                        notification = Notification.objects.create(
+                            notification_type = 'downpayment_paid',
+                            user = booking.artist.user,
+                            title="Downpayment Received! Your Event is Ready!",
+                            description=f"Great news! Echoer {booking.client.first_name.title()} {booking.client.last_name.title()} has successfully paid the downpayment for your confirmed booking . Your event is now all set and ready to go. We’re excited for the big day!",  # type: ignore
+                            booking=booking
+                        )
+                        notify_artist_of_paid_downpayment(artist=booking.artist.user, booking=booking)
+                    except Exception as e:
+                        print("failed create notification")
                 #Send Dibursement if final payment
                 if payment_type == 'final_payment' and booking.amount is not None:
                     payout_amount = booking.amount - (booking.amount * Decimal(0.05))
@@ -629,6 +640,15 @@ def payout_webhook(request):
                 payment.payment_reference  = f'PAY{payment.pk:06d}'
                 payment.save()
                 booking.complete()
+
+                notification = Notification.objects.create(
+                            notification_type = 'dibursement_received',
+                            user = booking.artist.user,
+                            title=f"Your booking with Echoer {booking.client.first_name} {booking.client.last_name} is fully paid. Please check your connected bank or wallet account.",
+                            description=f"Great news! Echoer {booking.client.first_name.title()} {booking.client.last_name.title()} has successfully paid for your confirmed booking!",  # type: ignore
+                            booking=booking
+                        )
+                notify_artist_of_paid_final_payment(artist=booking.artist.user, booking=booking)
             return JsonResponse({"status": "success"}, status=200)
         else:
             return JsonResponse({'message':'Error'}, status=400)

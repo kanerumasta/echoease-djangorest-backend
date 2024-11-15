@@ -11,7 +11,9 @@ from .views import (
     PasswordResetView,
     UpdateUserView,
     authorize_business_boost,
-    initiate_boost_auth
+    initiate_boost_auth,
+    DeactivateAccountView,
+    ActivateAccountView
 
 )
 
@@ -25,6 +27,8 @@ urlpatterns = [
     path('jwt/refresh/', CustomTokenRefreshView.as_view()),
     path('jwt/verify/', CustomTokenVerifyView.as_view()),
     path('logout/', LogoutView.as_view()),
+    path('deactivate/', DeactivateAccountView.as_view()),
+    path('activate/', ActivateAccountView.as_view()),
 
     #######################################################
 
@@ -39,6 +43,6 @@ urlpatterns = [
     path('change-password', PasswordResetView.as_view()),
     path('change-name',UpdateUserView.as_view() ),
     path('initiate-business-boost',initiate_boost_auth),
-    path('authorize-business-boost',authorize_business_boost)
+    path('authorize-business-boost',authorize_business_boost),
 
 ]
