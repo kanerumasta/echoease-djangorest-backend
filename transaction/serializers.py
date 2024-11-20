@@ -2,6 +2,7 @@ from rest_framework import serializers
 from .models import Transaction
 from booking.serializers import BookingSerializer
 from payment.serializers import PaymentSerializer
+from django.utils.timezone import localtime
 class TransactionSerializer(serializers.ModelSerializer):
     booking = BookingSerializer(read_only=True)
     payment = PaymentSerializer(read_only=True)
@@ -14,6 +15,7 @@ class TransactionSerializer(serializers.ModelSerializer):
         representation =  super().to_representation(instance)
         representation['formatted_created_at'] = instance.created_at and instance.created_at.strftime('%b %d, %Y %I:%M %p')
         representation['formatted_date'] = instance.created_at and instance.created_at.strftime('%b %d, %Y')
-        representation['formatted_time'] = instance.created_at and instance.created_at.strftime('%I:%M %p')
+        representation['formatted_time'] = instance.created_at and localtime(instance.created_at).strftime('%I:%M %p')
         representation['transaction'] = instance.get_transaction_type_display()
         return representation
+        

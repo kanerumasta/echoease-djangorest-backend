@@ -23,3 +23,4 @@ class Message(models.Model):
     content = models.TextField()
     author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="sent_messages")
     created_at = models.DateTimeField(auto_now_add=True)
+    mark_deleted =  models.BooleanField(default=False)

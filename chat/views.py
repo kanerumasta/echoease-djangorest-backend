@@ -30,6 +30,13 @@ class ConversationDetailView(APIView):
 
     def delete(self, request, code):
         conversation = get_object_or_404(Conversation, code=code)
+
+        messages  = conversation.messages
+        for message in messages.all():
+            message.mark_deleted = True
+            message.save()
+            print('deleted')
+
         conversation.deleted_for.add(request.user)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -57,7 +64,7 @@ class ConversationView(APIView):
                 conversation.participants.add(current_user, artist.user)  # Ensure participants are added here
 
         # Step 2: Retrieve messages for the conversation
-        messages = conversation.messages.all().order_by('-created_at')  # Order by latest
+        messages = conversation.messages.filter(mark_deleted=False).order_by('-created_at')  # Order by latest
 
         #Set messages as is_read
         messages.update(is_read=True)
@@ -132,8 +139,6 @@ def get_unread_messages_count(request):
         conversation__in=user_conversations,  # Use the relationship to filter by conversation
         is_read=False
     ).exclude(author=current_user).count()
-    print(unread_messages_count)
-
     return Response({'unread_messages_count': unread_messages_count}, status=status.HTTP_200_OK)
 
 

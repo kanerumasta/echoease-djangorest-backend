@@ -12,26 +12,31 @@ from .permissions import IsInvolved
 from rest_framework.decorators  import permission_classes
 from artists.models import Artist
 from payment.models import Payment
+from datetime import timedelta, datetime
+from django.utils.timezone import now, make_aware
+
+from payment.utils import refund_payment, send_compensation_fee
 from notification.utils import (
     notify_artist_of_new_booking,
     notify_client_of_accepted_booking,
     notify_artist_of_paid_downpayment,
     notify_client_of_cancelled_booking,
     notify_client_of_rejected_booking,
+
 )
 from django.http import FileResponse
 from .utils import (
     create_new_booking_notification,
     create_booking_confirmation_notification,
     create_booking_rejected_notification,
-    create_booking_cancelled_notification,
+
     # generate_booking_pdf
 )
-from django.utils import timezone
-import datetime
+from decimal import Decimal
+
 
 class BookingPagination(pagination.PageNumberPagination):
-    page_size = 10
+    page_size = 6
     max_page_size=20
     page_size_query_param = 'page_size'
     page_query_param = 'page'
@@ -57,7 +62,6 @@ class BookingPagination(pagination.PageNumberPagination):
 class BookingView(views.APIView):
     pagination_class = BookingPagination
     def post(self, request):
-        print(request.data)
         artist_id = request.data.get('artist')
         artist = get_object_or_404(Artist, id = artist_id)
         serializer = BookingSerializer(data = request.data)
@@ -81,8 +85,6 @@ class BookingView(views.APIView):
         sort_by = request.query_params.get('sort_by', None)
         sort_order = request.query_params.get('sort_order', None) #asc or desc
         paginate = request.query_params.get('paginate', False)
-        print('paginate',paginate )
-        print(type(paginate))
         bookings = Booking.objects.filter(Q(client=request.user) | Q(artist__user=request.user))
 
         if q is not None:
@@ -163,7 +165,9 @@ class BookingCancelView(views.APIView):
 
     def patch(self, request, id):
         booking = get_object_or_404(Booking, id=id)
-        cancel_reason = request.data.get('cancel_reason','No reason stated')
+        cancel_reason = request.data.get('cancel_reason', 'No reason stated')
+        event_date = booking.event_date
+        today = datetime.now().date()
 
         if booking.is_completed:
             return Response({'message': 'This booking is already completed and cannot be canceled.'}, status=status.HTTP_400_BAD_REQUEST)
@@ -175,15 +179,80 @@ class BookingCancelView(views.APIView):
         else:
             return Response({'message': 'You do not have permission to cancel this booking.'}, status=status.HTTP_403_FORBIDDEN)
 
+        if booking.status == 'approved':
+            downpayment = Payment.objects.filter(booking=booking, payment_type='downpayment').first()
+            if downpayment is None:
+                return Response({'message': 'No downpayment found for this booking.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            if cancelled_by == 'client':
+                start_range = event_date - timedelta(days=6)
+                end_range = event_date - timedelta(days=2)
+
+                if start_range <= today <= end_range:  # Within 2-6 days
+                    amount = downpayment.amount * Decimal(0.5)
+                elif today < start_range:  # More than 6 days before
+                    amount = downpayment.amount - Decimal(50)  # Adjust amount
+                else:  # Less than 2 days before
+                    amount = Decimal(0)
+                    compensation_amount = downpayment.amount - 50
+                    send_compensation_fee(booking_id=booking.pk, amount=compensation_amount, channel_code=booking.artist.channel_code)
+
+            elif cancelled_by == 'artist':
+                amount = downpayment.amount - 50
+
+            if amount > 0:
+                refundSuccess = refund_payment(
+                    amount=amount,
+                    invoice_id=downpayment.payment_id,
+                    payment_id=downpayment.pk,
+                    reason="CANCELLATION"
+                )
+
+                if refundSuccess:
+                    booking.status = 'cancelled'
+                    booking.cancelled_by = cancelled_by
+                    booking.cancel_reason = cancel_reason
+                    booking.save()
+
         # Perform the cancellation
         booking.cancel(cancelled_by=cancelled_by)
         booking.cancel_reason = cancel_reason
         booking.save()
 
-        # Create notifications
-        create_booking_cancelled_notification(booking.pk)
-        notify_client_of_cancelled_booking(user=booking.client, booking=booking)
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        # Create notification
+        if cancelled_by == 'client':
+            notification = Notification.objects.create(
+                notification_type='booking_cancelled',
+                user=booking.artist.user,  # Notify the artist when the client cancels
+                title=f"Booking Cancelled: #{booking.booking_reference}",
+                description=f"{booking.client.first_name.title()} canceled their booking on {booking.event_date.strftime('%Y-%m-%d')}.",
+                booking=booking
+            )
+        else:
+            notification = Notification.objects.create(
+                notification_type='booking_cancelled',
+                user=booking.client,  # Notify the client when the artist cancels
+                title=f"Booking Cancelled: #{booking.booking_reference}",
+                description=f"{booking.artist.user.first_name.title()} canceled your booking on {booking.event_date.strftime('%Y-%m-%d')}.",
+                booking=booking
+            )
+
+        # Check if notification was successfully created
+        if not notification:
+            return Response({'message': 'Failed to create notification.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        # Log the created notification for debugging
+        print("Notification Created:", notification)
+
+        # Create additional notifications (e.g., for internal system)
+        if cancelled_by == 'client':
+            notify_client_of_cancelled_booking(user=booking.artist.user, booking=booking)
+        elif cancelled_by == 'artist':
+            notify_client_of_cancelled_booking(user=booking.client, booking=booking)
+
+        return Response({'message': 'Booking cancellation successful, notification sent.'}, status=status.HTTP_200_OK)
+
+
 
 class PendingPaymentsView(views.APIView):
     pagination_class = BookingPagination
@@ -195,7 +264,7 @@ class PendingPaymentsView(views.APIView):
         bookings = Booking.objects.filter(
             Q(artist__user=request.user) | Q(client=request.user),
               status='approved',
-                event_date__lt=datetime.datetime.now().date(),
+                event_date__lt=datetime.now().date(),
              ).filter(
                 ~Exists(final_payment_exists)
              )
@@ -204,28 +273,14 @@ class PendingPaymentsView(views.APIView):
 
 class UpcomingEventsView(views.APIView):
     def get(self, request):
-        print()
         bookings = Booking.objects.filter(
             Q(artist__user=request.user) | Q(client=request.user),
               status='approved',
-            event_date__gt=datetime.datetime.now().date()
+            event_date__gt=datetime.now().date()
              ).order_by('event_date','start_time')
         serializer = BookingSerializer(bookings, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-# class BookingPDFView(views.APIView):
-#     permission_classes = [IsAuthenticated]
-
-#     def get(self, request, id):
-#         booking = get_object_or_404(Booking, id=id)
-
-#         # Generate the PDF
-#         pdf_path = generate_booking_pdf(booking)
-
-#         # Serve the PDF as a downloadable file
-#         response = FileResponse(open(pdf_path, 'rb'), content_type='application/pdf')
-#         response['Content-Disposition'] = f'attachment; filename="booking_{booking.booking_reference}.pdf"'
-#         return response
 
 class BookingHistoryView(views.APIView):
     pass

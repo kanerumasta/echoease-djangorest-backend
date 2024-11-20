@@ -16,7 +16,11 @@ from rest_framework.decorators import api_view, permission_classes, authenticati
 from .models import UserAccount, Profile
 from django.shortcuts import get_object_or_404
 import pytz
+from rest_framework.authentication import authenticate
 from rest_framework.permissions import AllowAny
+from logs.models import UserLogs
+
+
 
 
 class CustomProviderAuthView(ProviderAuthView):
@@ -50,6 +54,10 @@ class CustomProviderAuthView(ProviderAuthView):
         return response
 class CustomTokenObtainPairView(TokenObtainPairView):
     def post(self, request, *args, **kwargs):
+        email = request.data.get('email')
+        password = request.data.get('password')
+        user = authenticate(email=email, password=password)
+
         response = super().post(request, *args, **kwargs)
         if response.status_code == 200:
             access_token = response.data.get('access') # type: ignore
@@ -62,7 +70,6 @@ class CustomTokenObtainPairView(TokenObtainPairView):
                 secure=settings.AUTH_COOKIE_SECURE,
                 path=settings.AUTH_COOKIE_PATH,
                 samesite=settings.AUTH_COOKIE_SAMESITE
-
                 )
 
             response.set_cookie(
@@ -74,6 +81,26 @@ class CustomTokenObtainPairView(TokenObtainPairView):
                 samesite=settings.AUTH_COOKIE_SAMESITE
 
                 )
+    #             action = models.CharField(max_length=60)
+    # ip_address = models.GenericIPAddressField(null=True, blank=True)
+    # timestamp = models.DateTimeField(auto_now_add=True)
+    # message = models.TextField(null=True, blank=True)
+
+        ip = request.META['REMOTE_ADDR']
+
+
+        #log user
+        try:
+            UserLogs.objects.create(
+                user = user,
+                action='LOGIN',
+                ip_address = ip,
+                message = "User Logged in"
+            )
+        except Exception as e:
+            print(e)
+
+
 
         return response
 class CustomTokenRefreshView(TokenRefreshView):
@@ -108,6 +135,24 @@ class LogoutView(APIView):
         response = Response(status=status.HTTP_204_NO_CONTENT)
         response.delete_cookie('access')
         response.delete_cookie('refresh')
+
+        # Log the user activity
+        user = request.user  # Assuming the user is authenticated and part of the request
+        ip_address = request.META.get('REMOTE_ADDR')  # Capture the user's IP address
+        log_message = f"User {user.first_name} {user.last_name} logged out"
+
+        # Create a new log entry
+
+        log = UserLogs.objects.create(
+            user=user,
+            action='LOGOUT',
+            ip_address=ip_address,
+            message=log_message
+        )
+
+
+
+
 
         return response
 

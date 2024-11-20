@@ -76,3 +76,16 @@ class NotificationConsumer(AsyncWebsocketConsumer):
             'message': message,
             'notification_type': 'application'
         }))
+
+    async def connection_notification(self, event):
+        message = event['message']
+        await self.send(text_data=json.dumps({
+            'message': message,
+            'notification_type': 'connection'
+        }))
+    async def refund_notification(self, event):
+        message = event['message']
+        await self.send(text_data=json.dumps({
+            'message': message,
+            'notification_type': 'refund'
+        }))

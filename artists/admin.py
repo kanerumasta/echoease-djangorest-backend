@@ -23,103 +23,104 @@ from notification.models import Notification
 class ArtistApplicationAdmin(admin.ModelAdmin):
     list_display = ('id','user', 'status','created','updated')
     list_filter = ('status',)
-    actions = ['approve_applications', 'reject_applications']
+    # actions = ['approve_applications', 'reject_applications']
 
-    def approve_applications(self, request, queryset):
-        for application in queryset:
-            if application.status == 'under_review':
+    # def approve_applications(self, request, queryset):
+    #     for application in queryset:
+    #         if application.status == 'under_review':
 
-                try:
-                    artist = Artist.objects.create(
-                        user = application.user,
-                        fb_link = application.fb_link,
-                        instagram = application.instagram,
-                        twitter = application.twitter,
-                        spotify = application.spotify,
-                        youtube = application.youtube,
-                        idol = application.idol,
-                        years_experience = application.years_experience,
-                        bio = application.bio,
-                        stage_name = application.stage_name
-                    )
+    #             try:
+    #                 artist = Artist.objects.create(
+    #                     user = application.user,
+    #                     fb_link = application.fb_link,
+    #                     instagram = application.instagram,
+    #                     twitter = application.twitter,
+    #                     spotify = application.spotify,
+    #                     youtube = application.youtube,
+    #                     idol = application.idol,
+    #                     years_experience = application.years_experience,
+    #                     bio = application.bio,
+    #                     stage_name = application.stage_name,
 
-                    artist.genres.set(application.genres.all())
+    #                 )
 
-                    portfolio = artist.portfolio # type: ignore
+    #                 artist.genres.set(application.genres.all())
 
-                    portfolio_item = PortfolioItem.objects.create(
-                        portfolio=portfolio,
-                        title='Sample Videos',
-                        description='Sample videos from the artist application',
-                        group='portfolio'
-                    )
+    #                 portfolio = artist.portfolio # type: ignore
 
-                    # Add sample videos to the portfolio item as media
-                    sample_videos = [application.sample_video1, application.sample_video2, application.sample_video3]
-                    for video in sample_videos:
-                        if video:
-                            PortfolioItemMedia.objects.create(
-                                portfolio_item=portfolio_item,
-                                media_type='video',
-                                file=video
-                            )
+    #                 portfolio_item = PortfolioItem.objects.create(
+    #                     portfolio=portfolio,
+    #                     title='Sample Videos',
+    #                     description='Sample videos from the artist application',
+    #                     group='portfolio'
+    #                 )
 
-                    rates = application.rates.all()
-                    for rate in rates:
-                        rate.artist = artist
-                        rate.save()
+    #                 # Add sample videos to the portfolio item as media
+    #                 sample_videos = [application.sample_video1, application.sample_video2, application.sample_video3]
+    #                 for video in sample_videos:
+    #                     if video:
+    #                         PortfolioItemMedia.objects.create(
+    #                             portfolio_item=portfolio_item,
+    #                             media_type='video',
+    #                             file=video
+    #                         )
 
-                    application.status = 'approved'
-                    application.save()
-                    application.user.role = 'artist'
-                    application.user.save()
+    #                 rates = application.rates.all()
+    #                 for rate in rates:
+    #                     rate.artist = artist
+    #                     rate.save()
 
-                    Notification.objects.create(
-                        user=application.user,
-                        notification_type="application_accepted",
-                        title=f"Welcome to EchoEase, {application.user.first_name} {application.user.last_name}",
-                        description="We’re pleased to inform you that your application has been approved. Congratulations on joining EchoEase as an official Echoee! Your talent is now part of a vibrant community of artists. Start connecting with fans and venues, and showcase your music on a platform designed to elevate your artistry. Welcome aboard!"
+    #                 application.status = 'approved'
+    #                 application.save()
+    #                 application.user.role = 'artist'
+    #                 application.user.save()
 
-                    )
+    #                 Notification.objects.create(
+    #                     user=application.user,
+    #                     notification_type="application_accepted",
+    #                     title=f"Welcome to EchoEase, {application.user.first_name} {application.user.last_name}",
+    #                     description="We’re pleased to inform you that your application has been approved. Congratulations on joining EchoEase as an official Echoee! Your talent is now part of a vibrant community of artists. Start connecting with fans and venues, and showcase your music on a platform designed to elevate your artistry. Welcome aboard!"
 
-                    notify_application_accepted(user=application.user)
+    #                 )
 
-
-                    # Send email to the user notifying them of their approval\
-
-                    subject =  'Echoease Artist Application Approval'
-                    message = f'Your artist application has been approved.'
-                    send_mail(
-                        subject=subject,
-                        message=message,
-                        from_email=settings.DEFAULT_FROM_EMAIL,
-                        recipient_list=[application.user.email],
-                        fail_silently=True
-                        )
-
-                except Exception as e:
-                    print(e)
-                    print('Failed approving artist application')
+    #                 notify_application_accepted(user=application.user)
 
 
-    def reject_applications(self, request, queryset):
-        for application in queryset:
-            if application.status == 'under_review':
-                application.status = 'rejected'
-                application.save()
-                subject =  'Echoease Artist Application Declined'
-                message = f'We regret to inform you that your application has been rejected. Thank you for your interest in EchoEase.'
-                send_mail(
-                    subject=subject,
-                    message=message,
-                    from_email=settings.DEFAULT_FROM_EMAIL,
-                    recipient_list=[application.user.email],
-                    fail_silently=True
-                    )
+    #                 # Send email to the user notifying them of their approval\
+
+    #                 subject =  'Echoease Artist Application Approval'
+    #                 message = f'Your artist application has been approved.'
+    #                 send_mail(
+    #                     subject=subject,
+    #                     message=message,
+    #                     from_email=settings.DEFAULT_FROM_EMAIL,
+    #                     recipient_list=[application.user.email],
+    #                     fail_silently=True
+    #                     )
+
+    #             except Exception as e:
+    #                 print(e)
+    #                 print('Failed approving artist application')
 
 
-    approve_applications.short_description = 'Approve selected applications'
-    reject_applications.short_description = 'Reject selected applications'
+    # def reject_applications(self, request, queryset):
+    #     for application in queryset:
+    #         if application.status == 'under_review':
+    #             application.status = 'rejected'
+    #             application.save()
+    #             subject =  'Echoease Artist Application Declined'
+    #             message = f'We regret to inform you that your application has been rejected. Thank you for your interest in EchoEase.'
+    #             send_mail(
+    #                 subject=subject,
+    #                 message=message,
+    #                 from_email=settings.DEFAULT_FROM_EMAIL,
+    #                 recipient_list=[application.user.email],
+    #                 fail_silently=True
+    #                 )
+
+
+    # approve_applications.short_description = 'Approve selected applications'
+    # reject_applications.short_description = 'Reject selected applications'
 
 class ArtistAdmin(admin.ModelAdmin):
     list_display = ('id','slug','__str__', 'status',)
@@ -146,7 +147,7 @@ admin.site.register(ArtistApplication, ArtistApplicationAdmin)
 admin.site.register(Artist, ArtistAdmin)
 admin.site.register(Genre, GeneralAdmin)
 admin.site.register(Portfolio,GeneralAdmin)
-admin.site.register(PortfolioItem,GeneralAdmin)
+admin.site.register(PortfolioItem)
 admin.site.register(IDType,GeneralAdmin)
 admin.site.register(Rate, GeneralAdmin)
 admin.site.register(ConnectionRequest, GeneralAdmin)

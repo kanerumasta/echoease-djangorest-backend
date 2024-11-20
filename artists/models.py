@@ -64,22 +64,7 @@ class ArtistApplication(models.Model):
     #BANK DETAIL
     channel_code = models.CharField(max_length=20, null=True, blank=True)
     account_holder_name = models.CharField(max_length=255, null=True, blank=True)
-    encrypted_account_number = models.BinaryField(max_length=255,null=True, blank=True)
-
-    def set_account_number(self, account_number):
-        if account_number:
-            cipher = Fernet(settings.ENCRYPTION_KEY)
-            self.encrypted_account_number = cipher.encrypt(account_number.encode())
-            self.save()
-        else:
-            self.encrypted_account_number = None
-            self.save()
-
-    def get_account_number(self):
-        if self.encrypted_account_number:
-            cipher = Fernet(settings.ENCRYPTION_KEY)
-            return cipher.decrypt(bytes(self.encrypted_account_number)).decode()
-        return None
+    account_number = models.CharField(max_length=255,null=True, blank=True)
 
     def __str__(self):
         if self.user:
@@ -132,6 +117,7 @@ class Artist(models.Model):
     channel_code = models.CharField(max_length=20, null=True, blank=True)
     account_holder_name = models.CharField(max_length=255, null=True, blank=True)
     encrypted_account_number = models.BinaryField(max_length=255,null=True, blank=True)
+    account_number = models.CharField(max_length=255,null=True, blank=True)
 
     def set_account_number(self, account_number):
         if account_number:
@@ -176,7 +162,7 @@ class PortfolioItem(models.Model):
     group = models.CharField(max_length=50,default="portfolio",choices=GROUPS,null=True, blank=True)
 
     def __str__(self) -> str:
-        return self.title or 'Unknown Portfolio Item'
+        return f"{self.title} {self.portfolio.artist}"
 
 
 class PortfolioItemMedia(models.Model):
@@ -201,7 +187,6 @@ class Rate(models.Model):
 
     def __str__(self):
         return f'{self.artist}-{self.name}-{self.amount}'
-
 
 
 class ConnectionRequest(models.Model):

@@ -30,15 +30,14 @@ class Booking(models.Model):
     is_reviewed = models.BooleanField(default=False)
     decline_reason = models.TextField(null=True, blank=True)
     cancel_reason = models.TextField(null=True, blank=True)
+    latitude = models.FloatField(null=True, blank=True)
+    longitude = models.FloatField(null=True, blank=True)
     cancelled_by = models.CharField(null=True, blank=True, choices=[
         ('client','Client'),
         ('artist','Artist')
         ])
-
     is_expired = models.BooleanField(default=False)
-
     has_sent_payment_reminder = models.BooleanField(default=False)
-
     status_choices = [
     ('pending','Pending'),
     ('cancelled','Cancelled'),
@@ -54,11 +53,7 @@ class Booking(models.Model):
     @property
     def is_event_due(self):
         event_end_datetime = datetime.combine(self.event_date, self.end_time)
-        print('eventdateimte',event_end_datetime)
-        print('now',datetime.now())
         return datetime.now() > event_end_datetime
-
-    #approve here only sets statust to awaiting downpayment
 
     def calculate_downpayment(self):
         if self.amount is None:
@@ -77,10 +72,8 @@ class Booking(models.Model):
     def downpayment_paid(self):
         self.status = 'approved'
         #create timeslot exception for this time slot
-
-
-
         self.save()
+
 
     def cancel(self, cancelled_by):
         if cancelled_by not in ['client', 'artist']:
@@ -152,4 +145,5 @@ class Booking(models.Model):
         return f'{self.event_name} - {self.artist} - {self.client}'
 
     class Meta:
+        unique_together = ('artist', 'client', 'event_date', 'start_time','end_time')
         ordering = ['-created_at']

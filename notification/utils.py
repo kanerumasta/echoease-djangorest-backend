@@ -130,6 +130,43 @@ def notify_application_accepted(user):
         {
             'type': 'application_notification',
             'application_type':'accepted',
+            'message':'Your application has been accepted',
             'user': f'{user.first_name} {user.last_name}'
+        }
+    )
+
+def notify_new_sent_request(receiver, sender): #receiver and sender are both UserAccount instance
+    channel_layer = get_channel_layer()
+
+    group_name = f"user_{receiver.user.id}"
+
+    async_to_sync(channel_layer.group_send)( # type: ignore
+        group_name,
+        {
+            'type': 'connection_notification',
+            'message': f'{sender.first_name} {sender.last_name} sent you a connection request.'
+        }
+    )
+def notify_accepted_request(receiver, sender): #receiver and sender are both UserAccount instance
+    channel_layer = get_channel_layer()
+
+    group_name = f"user_{receiver.user.id}"
+
+    async_to_sync(channel_layer.group_send)( # type: ignore
+        group_name,
+        {
+            'type': 'connection_notification',
+            'message': f'{sender.user.first_name} {sender.user.last_name} accepted your connection request.'
+        }
+    )
+
+def notify_refunded_payment(user):
+    channel_layer = get_channel_layer()
+    group_name = f"user_{user.id}"
+    async_to_sync(channel_layer.group_send)( # type: ignore
+        group_name,
+        {
+            'type': 'refund_notification',
+            'message': f'Your payment has been refunded.'
         }
     )

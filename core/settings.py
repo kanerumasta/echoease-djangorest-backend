@@ -33,7 +33,6 @@ ALLOWED_HOSTS = ["*"]
 
 
 # Application definition
-
 INSTALLED_APPS = [
     'daphne',
     'jazzmin',
@@ -60,6 +59,7 @@ INSTALLED_APPS = [
     'schedule',
     'transaction',
     'review',
+    'logs',
     'custom_admin',
     #  'background_task',
 
@@ -211,8 +211,10 @@ EMAIL_HOST_USER = getenv('DEFAULT_FROM_EMAIL')
 EMAIL_HOST_PASSWORD = getenv('EMAIL_HOST_PASSWORD')
 
 SITE_NAME = 'Echoease'
-DOMAIN = getenv('DOMAIN', '192.168.1.242:3000')
+DOMAIN = getenv('DOMAIN')
 
+DISTANCE_MATRIX_API_URL = getenv('DISTANCE_MATRIX_API_URL')
+DISTANCE_MATRIX_API_KEY = getenv('DISTANCE_MATRIX_API_KEY')
 
 
 DEFAULT_FROM_EMAIL = getenv('DEFAULT_FROM_EMAIL')

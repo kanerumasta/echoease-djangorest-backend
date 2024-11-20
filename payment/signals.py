@@ -1,27 +1,11 @@
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from .models import Payment
+from .models import Payment, Refund
 from transaction.models import Transaction
+from logs.models import TransactionLogs
 
 
 from booking.models import Booking
-
-# class Transaction(models.Model):
-#     TRANSACTION_TYPES = [
-#         ('downpayment', 'Down Payment'),
-#         ('final_payment', 'Final Payment'),
-#         ('payout', 'Payout'),
-#         ('refund', 'Refund'),
-#     ]
-#     transaction_reference = models.CharField(max_length=15, blank=True, unique=True)
-#     transaction_type = models.CharField(max_length=50, choices=TRANSACTION_TYPES)
-#     booking = models.ForeignKey(Booking, on_delete=models.CASCADE)
-#     amount = models.DecimalField(max_digits=10, decimal_places=2)
-#     created_at = models.DateTimeField(auto_now_add=True)
-#     updated_at = models.DateTimeField(auto_now=True)
-
-#     class Meta:
-#         ordering = ['-created_at']
 
 
 @receiver(post_save, sender=Payment)
@@ -43,3 +27,25 @@ def create_payment_transaction(sender, instance, created, **kwargs):
             print(f'Created transaction for booking {instance.booking.id}')
         except Exception as e:
             print(f'Error creating transaction in signals: {e}')
+
+@receiver(post_save, sender=Payment)
+def log_payment(sender, instance, created, **kwargs):
+    if created:
+        try:
+            TransactionLogs.objects.create(
+                transaction_type = "PAYMENT",
+                message=f'{instance.payment_type} received for booking {instance.booking.id}'
+            )
+        except Exception as e:
+            print(f'Error logging payment in signals: {e}')
+
+@receiver(post_save, sender=Refund)
+def log_transaction(sender, instance, created, **kwargs):
+    if created:
+        try:
+            TransactionLogs.objects.create(
+                transaction_type = 'REFUND',
+                message=f'Refund initiated for payment {instance.payment.id}'
+            )
+        except Exception as e:
+            print(f'Error logging refund in signals: {e}')

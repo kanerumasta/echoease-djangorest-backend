@@ -7,7 +7,7 @@ class CustomAdminModel (admin.ModelAdmin):
     ordering = ['created_at']
 
 class MessageAdminModel(admin.ModelAdmin):
-    list_display = ['pk','created_at', 'author']
+    list_display = ['pk','created_at', 'author','mark_deleted']
     list_display_links = ['pk','created_at']
     ordering = ['created_at']
 

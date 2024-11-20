@@ -37,6 +37,7 @@ class Dispute(models.Model):
     description = models.TextField()
     is_resolved = models.BooleanField(default=False)
     date_resolved = models.DateTimeField(null=True, blank=True)
+    resolution = models.TextField(null=True, blank=True)
     notes = models.TextField(null=True, blank=True)
 
     def __str__(self) -> str:

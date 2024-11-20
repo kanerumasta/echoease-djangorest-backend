@@ -1,7 +1,8 @@
 # admin.py
 from django.contrib import admin
-from .models import Dispute
+from .models import Dispute, DisputeEvidence
 from django.utils.html import format_html
+
 
 @admin.register(Dispute)
 class DisputeAdmin(admin.ModelAdmin):
@@ -40,3 +41,6 @@ class DisputeAdmin(admin.ModelAdmin):
     def resolve_dispute(self, obj):
         return format_html('<a class="button" href="{}">Resolve</a>', f'/admin/dispute/dispute/{obj.id}/change/')
     resolve_dispute.short_description = "Resolve Dispute"
+
+
+admin.site.register(DisputeEvidence)

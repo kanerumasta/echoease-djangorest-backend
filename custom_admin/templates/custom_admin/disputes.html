@@ -34,6 +34,11 @@
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
 
+        .table thead {
+            background-color : "#4093f2";
+            color: #fff;
+        }
+
         .btn-info {
             background-color: var(--theme-color);
             border-color: var(--theme-color);
@@ -63,7 +68,7 @@
         <h1 class="mb-4 text-center">Disputes</h1>
         <div class="table-container bg-white">
             <table class="table table-hover table-striped mb-0">
-                <thead class="table-dark">
+                <thead>
                     <tr>
                         <th>#</th>
                         <th>Booking</th>
@@ -91,7 +96,7 @@
                         <td>
                             <a href="{% url 'dispute_detail' dispute.id %}" class="btn btn-info btn-sm">View</a>
                             {% if not dispute.is_resolved %}
-                            <button class="btn btn-success btn-sm">Resolve</button>
+
                             {% endif %}
                         </td>
                     </tr>

@@ -82,23 +82,23 @@ def create_booking_rejected_notification(booking_id):
     except Booking.DoesNotExist:
         print(f"Booking with id {booking_id} does not exist.")
 
-def create_booking_cancelled_notification(booking_id):
-    try:
-        booking = Booking.objects.get(id=booking_id)
+# def create_booking_cancelled_notification(booking_id):
+#     try:
+#         booking = Booking.objects.get(id=booking_id)
 
-        notification_type = 'booking_cancelled'
-        title = 'Booking Cancelled!'
-        description = f'Your booking for an event on {booking.event_date} with {booking.client.first_name} {booking.client.last_name} has been rejected.'
+#         notification_type = 'booking_cancelled'
+#         title = 'Booking Cancelled!'
+#         description = f'Your booking for an event on {booking.event_date} with {booking.client.first_name} {booking.client.last_name} has been cancelled.'
 
-        Notification.objects.create(
-            user=booking.client,
-            notification_type=notification_type,
-            title=title,
-            description=description,
-            booking=booking
-        )
-    except Booking.DoesNotExist:
-        print(f"Booking with id {booking_id} does not exist.")
-#BUSINESS BOOST
-def upload_event_to_facebook():
-    pass
+#         Notification.objects.create(
+#             user=booking.client,
+#             notification_type=notification_type,
+#             title=title,
+#             description=description,
+#             booking=booking
+#         )
+#     except Booking.DoesNotExist:
+#         print(f"Booking with id {booking_id} does not exist.")
+# #BUSINESS BOOST
+# def upload_event_to_facebook():
+#     pass

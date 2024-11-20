@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Payment
+from .models import Payment, Refund
 
 
 class PaymentAdmin(admin.ModelAdmin):
@@ -24,3 +24,4 @@ class PaymentAdmin(admin.ModelAdmin):
 
 
 admin.site.register(Payment, PaymentAdmin)
+admin.site.register(Refund )

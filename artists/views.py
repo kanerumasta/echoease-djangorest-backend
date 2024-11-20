@@ -18,7 +18,10 @@ from .permissions import IsArtist
 from django.utils import timezone
 from users.serializers import UserAccountSerializer
 from django.db.models import Min
+from notification.utils import notify_new_sent_request, notify_accepted_request
 import time
+from notification.models import Notification
+from django.core.mail import send_mail
 
 
 
@@ -58,7 +61,6 @@ class ArtistPagination(pagination.PageNumberPagination):
         },status=status.HTTP_200_OK)
 
 class ArtistView(APIView):
-
     pagination_class = ArtistPagination
     def get_permissions(self):
         if self.request.method == 'GET':
@@ -143,7 +145,6 @@ class ArtistView(APIView):
                 if category == 'near':
                     if request.user.is_authenticated:
                         municipality = request.user.profile.municipality
-                        print(municipality)
                         artist_list = artist_list.filter(user__profile__municipality=municipality)
 
             if genres is not None:
@@ -173,7 +174,6 @@ class ArtistView(APIView):
 
 
 class PortfolioView(APIView):
-
     permission_classes=[AllowAny]
     def get(self, request, artist_id):
         artist = get_object_or_404(Artist, id=artist_id)
@@ -210,6 +210,37 @@ class PortfolioItemView(APIView):
         portfolio_item.delete()
         return Response(status=status.HTTP_200_OK)
 
+class PortfolioItemMediaView(APIView):
+    def post(self, request):
+        serializer = PortfolioItemMediaSerializer(data = request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        print(serializer.errors)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, id):
+        media = get_object_or_404(PortfolioItemMedia, id=id)
+        media.delete()
+        return Response({'message':'media deleted successfully'}, status=status.HTTP_200_OK)
+
+#upload portfolio by artist
+class SamplePortfolioItemView(APIView):
+    def post(self, request):
+        user = request.user
+        artist = get_object_or_404(Artist, user = user)
+        portfolio = artist.portfolio
+        if not portfolio:
+            return Response({'message':'portfolio not found'}, status=status.HTTP_404_NOT_FOUND)
+        item = PortfolioItem.objects.create(
+            title = "Sample Videos",
+            description = "These are my sample videos.",
+            portfolio = portfolio
+        )
+        serializer = PortfolioItemSerializer(item)
+        return Response(serializer.data, status = status.HTTP_201_CREATED)
+
+
 class ArtistApplicationView(APIView):
     #FOR ADMIN ONLY
     def get(self, request):
@@ -229,16 +260,60 @@ class ArtistApplicationView(APIView):
             print(e)
             return Response(status=status.HTTP_400_BAD_REQUEST)
 
+    # def post(self, request):
+    #     #check user is verified here
+    #     try:
+    #         user = request.user
+    #         application = ArtistApplication.objects.filter(user = user)
+    #         if application.exists():
+    #             return Response({'message':'You already have an artist application.'},status = status.HTTP_409_CONFLICT)
+    #         serializer = ArtistApplicationSerializer(data = request.data,context={'request':request})
+    #         if serializer.is_valid():
+    #             serializer.save(user=user)
+    #             return Response(serializer.data, status = status.HTTP_201_CREATED)
+    #         print(serializer.errors)
+    #         return Response(serializer.errors, status= status.HTTP_400_BAD_REQUEST)
+    #     except Exception as e:
+    #         print(e)
+    #         return Response(status = status.HTTP_500_INTERNAL_SERVER_ERROR)
     def post(self, request):
         #check user is verified here
         try:
             user = request.user
-            application = ArtistApplication.objects.filter(user = user)
-            if application.exists():
-                return Response({'message':'You already have an artist application.'},status = status.HTTP_409_CONFLICT)
+            artist = Artist.objects.filter(user = user)
+            if artist.exists():
+                return Response({'message':'Youre already an artist.'},status = status.HTTP_409_CONFLICT)
             serializer = ArtistApplicationSerializer(data = request.data,context={'request':request})
             if serializer.is_valid():
-                serializer.save(user=user)
+                new_artist = serializer.save(user=user)
+                new_artist.set_account_number(new_artist.account_number)
+                new_artist.account_number = ""
+                new_artist.save()
+                user.role = 'artist'
+                user.save()
+
+                Notification.objects.create(
+                user=user,
+                notification_type="application_accepted",
+                title=f"Welcome to EchoEase, {user.first_name} {user.last_name}",
+                description="We’re pleased to inform you that your application has been approved. Congratulations on joining EchoEase as an official Echoee! Your talent is now part of a vibrant community of artists. Start connecting with fans and venues, and showcase your music on a platform designed to elevate your artistry. Welcome aboard!"
+
+            )
+
+
+
+
+            # Send email to the user notifying them of their approval\
+
+                subject =  'Echoease Artist Application Approval'
+                message = f'Your artist application has been approved.'
+                send_mail(
+                    subject=subject,
+                    message=message,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[user.email],
+                    fail_silently=True
+                    )
                 return Response(serializer.data, status = status.HTTP_201_CREATED)
             print(serializer.errors)
             return Response(serializer.errors, status= status.HTTP_400_BAD_REQUEST)
@@ -353,7 +428,17 @@ class ConnectionRequestView(APIView):
         serializer = ConnectionRequestSerializer(data = request.data)
         try:
             if serializer.is_valid():
-                    serializer.save()
+                    con_request = serializer.save()
+                    try:
+                        Notification.objects.create(
+                            user = con_request.sender.user,
+                            notification_type = 'connection_request_accepted',
+                            title = f'{con_request.sender.user.first_name} {con_request.sender.user.last_name} has accepted your connection request',
+                            description = f'Click here to view and manage your connections',
+                        )
+                    except Exception as e:
+                        pass
+                    notify_new_sent_request(con_request.receiver, request.user)
                     return Response(serializer.data, status=status.HTTP_201_CREATED)
             print(serializer.errors)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -371,9 +456,19 @@ class ConnectionRequestView(APIView):
         if connection_request and action:
             if action == 'accept':
                 connection_request.accept()
+                try:
+                    Notification.objects.create(
+                        user = connection_request.sender.user,
+                        notification_type = 'connection_request_accepted',
+                        title = f'{connection_request.sender.user.first_name} {connection_request.sender.user.last_name} has accepted your connection request',
+                        description = f'Click here to view and manage your connections',
+                    )
+                except Exception as e:
+                    pass
+                notify_accepted_request(connection_request.sender, connection_request.receiver)
                 return Response(status=status.HTTP_204_NO_CONTENT)
             if action == 'reject':
-                connection_request.reject()
+                connection_request.delete()
                 return Response(status=status.HTTP_204_NO_CONTENT)
 
     def delete(self, request,id):
@@ -403,21 +498,28 @@ class SentConnectionRequestView(APIView):
         serializer = ConnectionRequestSerializer(connection_requests, many=True)
         return Response(serializer.data, status = status.HTTP_200_OK)
 
-class PortfolioItemMediaView(APIView):
-    def post(self, request):
-        serializer = PortfolioItemMediaSerializer(data = request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(status=status.HTTP_204_NO_CONTENT)
-        print(serializer.errors)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    def delete(self, request, id):
-        media = get_object_or_404(PortfolioItemMedia, id=id)
-        media.delete()
-        return Response({'message':'media deleted successfully'}, status=status.HTTP_200_OK)
+class DisconnectArtistView(APIView):
+    def delete(self,request, artist_id):
+        artist = get_object_or_404(Artist, id=artist_id)
+        artist_user = get_object_or_404(Artist, user = request.user)
+        artist_user.connections.remove(artist)
+        connection_request = ConnectionRequest.objects.filter(
+            Q(sender=artist_user, receiver=artist) | Q(sender=artist, receiver=artist_user)
+        )
+        connection_request.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+class FollowingView(APIView):
+    def get(self, requests,artist_id, *args, **kwargs):
+        artist = get_object_or_404(Artist, pk = artist_id)
+        artist_user = artist.user
+        if artist_user is None:
+            return Response({'message':'Artist User Not Found'},status=status.HTTP_404_NOT_FOUND)
+        artist_followed = artist_user.artists_followed
+        serializer = ArtistSerializer(artist_followed.all(), many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 @api_view(['POST'])
 def follow(request):
