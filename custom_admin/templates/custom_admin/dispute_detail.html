@@ -6,18 +6,123 @@
     <title>Dispute Details</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Global Styles */
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f8f9fa;
+            color: #343a40;
+        }
+
+        .navbar {
+            background-color: #4093f2;
+        }
+
+        .navbar-brand, .btn-light {
+
+            font-weight: 600;
+        }
+        .navbar-brand {
+            color: #fff !important;
+        }
+
+
+        .btn-light {
+            color: #4093f2;
+            border: 1px solid #4093f2;
+        }
+
+        .btn-light:hover {
+            background-color: #e6f2ff;
+            border-color: #4093f2;
+        }
+
+        h1, h3 {
+            color: #4093f2;
+        }
+
+        .card {
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .card-header {
+            background-color: #4093f2;
+            color: white;
+            font-weight: 600;
+            border-radius: 12px 12px 0 0;
+        }
+
+        .btn-primary, .btn-success, .btn-danger, .btn-warning {
+            font-weight: 500;
+            border-radius: 8px;
+        }
+
+        .btn-primary {
+            background-color: #4093f2;
+            border-color: #4093f2;
+        }
+
+        .btn-primary:hover {
+            background-color: #3078cc;
+            border-color: #3078cc;
+        }
+
+        footer {
+            background-color: #4093f2;
+            color: #fff;
+            padding: 10px 0;
+        }
+
+        ul.list-group {
+            border-radius: 8px;
+        }
+
+        ul.list-group .list-group-item {
+            border: none;
+            border-bottom: 1px solid #ddd;
+        }
+
+        ul.list-group .list-group-item:last-child {
+            border-bottom: none;
+        }
+
+        /* Modal Styling */
+        .modal-content {
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .modal-header {
+            background-color: #4093f2;
+            color: white;
+            border-radius: 12px 12px 0 0;
+        }
+
+        .navbar {
+            background-color: var(--theme-color);
+        }
+
+        .navbar-brand {
+            color: #fff !important;
+        }
+    </style>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg py-3">
         <div class="container-fluid">
-            <a class="navbar-brand" href="#">Echoease Admin</a>
+            <a class="navbar-brand fs-4" href="{% url 'admin-dashboard' %}">Echoease Admin</a>
             <a class="btn btn-light btn-sm ms-auto" href="{% url 'disputes' %}">Back to Disputes</a>
         </div>
     </nav>
 
-    <div class="container mt-4">
+    <!-- Main Content -->
+    <div class="container my-5">
         <h1 class="mb-4">Dispute Details</h1>
 
+        <!-- Dispute Card -->
         <div class="card">
             <div class="card-header">
                 <strong>Dispute ID:</strong> {{ dispute.id }}
@@ -26,12 +131,12 @@
                 <p><strong>Booking:</strong> {{ dispute.booking }}</p>
 
                 {% if downpayment %}
-                    <p><strong>Downpayment Paid:</strong> PHP {{ downpayment.amount }}</p>
-                    <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#refundModal" data-payment-id="{{ downpayment.id }}">
-                        Refund
-                    </button>
+                <p><strong>Downpayment Paid:</strong> PHP {{ downpayment.amount }}</p>
+                <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#refundModal" data-payment-id="{{ downpayment.id }}">
+                    Refund
+                </button>
                 {% else %}
-                    <p class="text-muted">No downpayment available for refund.</p>
+                <p class="text-muted">No downpayment available for refund.</p>
                 {% endif %}
 
                 <p><strong>Type:</strong> {{ dispute.get_dispute_type_display }}</p>
@@ -47,6 +152,7 @@
             </div>
         </div>
 
+        <!-- Evidence Section -->
         <div class="mt-4">
             <h3>Evidence</h3>
             {% if dispute.evidences.all %}
@@ -68,22 +174,21 @@
             {% endif %}
         </div>
 
+        <!-- Actions Section -->
         <div class="mt-4">
             {% if not dispute.is_resolved %}
-            <!-- Button to open the Mark as Resolved Modal -->
             <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#markResolvedModal">Mark as Resolved</button>
-            <button class="btn btn-warning " data-bs-toggle="modal" data-bs-target="#decreaseReputationModal">Decrease Reputation</button>
+            <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#decreaseReputationModal">Decrease Reputation</button>
             {% else %}
             <p class="text-success">This dispute has already been resolved.</p>
             {% endif %}
-
         </div>
     </div>
 
-    <footer class="text-center mt-4">
+    <!-- Footer -->
+    <footer class="text-center">
         <p>&copy; 2024 Echoease. All rights reserved.</p>
     </footer>
-
     <!-- Mark as Resolved Modal -->
     <div class="modal fade" id="markResolvedModal" tabindex="-1" aria-labelledby="markResolvedModalLabel" aria-hidden="true">
         <div class="modal-dialog">

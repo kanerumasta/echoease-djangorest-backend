@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Detail</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f8f9fa;
+        }
+
+        .card {
+            border: none;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .user-info {
+            margin-bottom: 1.5rem;
+        }
+
+        .btn-custom {
+            background-color: #4093f2;
+            color: white;
+            border: none;
+        }
+
+        .btn-custom:hover {
+            background-color: #3079c5;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark" style="background-color: #4093f2;">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="{% url 'admin-dashboard' %}">Echoease Admin</a>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container mt-5">
+        <h1 class="text-center mb-4">User Detail: {{ user.first_name }} {{ user.last_name }}</h1>
+
+        <div class="row">
+            <div class="col-md-4">
+                <!-- User Info Card -->
+                <div class="card p-4">
+                    <h5 class="card-title">User Information</h5>
+                    <p><strong>Full Name:</strong> {{ user.first_name }} {{ user.last_name }}</p>
+                    <p><strong>Email:</strong> {{ user.email }}</p>
+                    <p><strong>Role:</strong> {{ user.get_role_display }}</p>
+                    <p><strong>Status:</strong>
+                        {% if user.is_suspended %}
+                            <span class="text-danger">Suspended</span>
+                        {% elif user.is_deactivated %}
+                            <span class="text-muted">Deactivated</span>
+                        {% else %}
+                            <span class="text-success">Active</span>
+                        {% endif %}
+                    </p>
+                    <p><strong>Reputation Score:</strong> {{ user.reputation_score }}</p>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <!-- Profile Info Card -->
+                <div class="card p-4">
+                    <h5 class="card-title">Profile Information</h5>
+                    {% if user.profile.profile_image %}
+                        <p><strong>Profile Image:</strong> <img src="{{ user.profile.profile_image.url }}" class="img-thumbnail" width="100" alt="Profile Image"></p>
+                    {% endif %}
+                    <p><strong>Date of Birth:</strong> {{ user.profile.dob }}</p>
+                    <p><strong>Gender:</strong> {{ user.profile.gender }}</p>
+                    <p><strong>Phone:</strong> {{ user.profile.phone }}</p>
+                    <p><strong>Address:</strong> {{ user.profile.street }}, {{ user.profile.brgy }}, {{ user.profile.municipality }}, {{ user.profile.province }}</p>
+                    <p><strong>Nationality:</strong> {{ user.profile.nationality }}</p>
+                    <p><strong>Language:</strong> {{ user.profile.language }}</p>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <!-- Business Info Card (If user is a business owner) -->
+                {% if user.role == 'client' %}
+                    <div class="card p-4">
+                        <h5 class="card-title">Business Information</h5>
+                        <p><strong>Business Name:</strong> {{ user.business_name }}</p>
+                        {% if user.business_image%}
+                        <p><strong>Business Image:</strong> <img src="{{ user.business_image.url }}" class="img-thumbnail" width="100" alt="Business Image"></p>
+                        {% endif %}
+                        <p><strong>Production Page:</strong> {{ user.production_page }}</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Actions Section -->
+        <div class="row mt-4">
+            <div class="col">
+                {% if user.is_suspended %}
+                    <!-- Show Unsuspend button if the user is suspended -->
+                    <button class="btn btn-success w-100" data-bs-toggle="modal" data-bs-target="#unsuspendModal">Unsuspend User</button>
+                {% else %}
+                    <!-- Show Suspend button if the user is not suspended -->
+                    <button class="btn btn-warning w-100" data-bs-toggle="modal" data-bs-target="#suspendModal">Suspend User</button>
+                {% endif %}
+            </div>
+            <div class="col">
+                <button class="btn btn-danger w-100" data-bs-toggle="modal" data-bs-target="#warningModal">Send Warning</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Unsuspend Modal -->
+<div class="modal fade" id="unsuspendModal" tabindex="-1" aria-labelledby="unsuspendModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="unsuspendModalLabel">Unsuspend User</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Are you sure you want to unsuspend this user?
+            </div>
+            <div class="modal-footer">
+                <form id="unsuspendForm" method="POST" action="{% url 'unsuspend_user' user.id %}">
+                    {% csrf_token %}
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" name="unsuspend_user" class="btn btn-success">Unsuspend</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+    <!-- Suspend Modal -->
+    <!-- Suspend Modal -->
+<div class="modal fade" id="suspendModal" tabindex="-1" aria-labelledby="suspendModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="suspendModalLabel">Suspend User</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Are you sure you want to suspend this user?
+            </div>
+            <div class="modal-footer">
+                <form id="suspendForm" method="POST" action="{% url 'user_detail' user.id %}">
+                    {% csrf_token %}
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" name="suspend_user" class="btn btn-danger" id="suspendConfirmBtn">Suspend</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+        <!-- Warning Modal -->
+<div class="modal fade" id="warningModal" tabindex="-1" aria-labelledby="warningModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="warningModalLabel">Send Warning</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="warningForm" method="POST" action="{% url 'warn_user' user.id %}">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="warningMessage" class="form-label">Warning Message</label>
+                        <textarea class="form-control" id="warningMessage" name="message" rows="4" required></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" form="warningForm" class="btn btn-primary">Send Warning</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+    </div>
+
+    <script>
+        // Suspend User Logic
+        document.getElementById('suspendConfirmBtn').addEventListener('click', function() {
+            // Get the user ID from the URL or other sources
+            const userId = user.id ;
+
+            // Send an AJAX request to suspend the user
+            fetch(`/myadmin/users/${userId}/suspend/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}',
+                },
+                body: JSON.stringify({ action: 'suspend' })  // Send the action to suspend
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('User suspended!');
+                    window.location.reload();  // Reload the page to reflect the suspension status
+                } else {
+                    alert('Error suspending user: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Something went wrong.');
+            });
+        });
+
+         // Unsuspend User Logic
+    document.getElementById('unsuspendConfirmBtn').addEventListener('click', function() {
+        const userId = user.id
+
+        // Send an AJAX request to unsuspend the user
+        fetch(`/myadmin/users/${userId}/unsuspend/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}',
+            },
+            body: JSON.stringify({ action: 'unsuspend' })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('User unsuspended!');
+                window.location.reload();  // Reload the page to reflect the unsuspension status
+            } else {
+                alert('Error unsuspending user: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Something went wrong.');
+        });
+    });
+    // Warning User Logic
+document.getElementById('sendWarningBtn').addEventListener('click', function() {
+    // Get the user ID from the URL or other sources
+    const userId = user.id ;  // Use Django template to insert user ID
+
+    const warningMessage = document.getElementById('warningMessage').value;
+
+    if (!warningMessage) {
+        alert('Please enter a warning message.');
+        return;
+    }
+
+    // Send an AJAX request to issue a warning
+    fetch(`/myadmin/users/${userId}/warn/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}',
+        },
+        body: JSON.stringify({ message: warningMessage })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Warning issued successfully!');
+            window.location.reload();  // Reload the page to reflect the warning
+        } else {
+            alert('Error issuing warning: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Something went wrong.');
+    });
+});
+
+    </script>
+
+
+</body>
+</html>

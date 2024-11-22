@@ -14,6 +14,7 @@ from datetime import timedelta
 APPEND_SLASH = True
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+LOGIN_URL = '/admin/login/'
 
 dotenv_file = BASE_DIR / '.env.local'
 TIME_ZONE = 'Asia/Manila'

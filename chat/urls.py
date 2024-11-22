@@ -11,5 +11,6 @@ urlpatterns=[
     path('conversations/<str:code>/read',set_conversation_read), #mark all conversation as read
     path('<str:code>', ConversationView.as_view(),name='conversation-detail'),
     path('slug/<str:slug>', ConversationView.as_view()),
+    path('admin-chat/', AdminChatSupportView.as_view(), name='admin_chat_support'),
     # path('<str:code>/messages', MessagesView.as_view(),name='message-list'),
 ]

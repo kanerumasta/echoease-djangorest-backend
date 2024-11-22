@@ -49,6 +49,7 @@ class UserAccount(AbstractBaseUser, PermissionsMixin):
     )
     is_verified = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
+    is_chat_support = models.BooleanField(default=False)
     is_deactivated = models.BooleanField(default = False)
     is_suspended = models.BooleanField(default=False)
     is_staff = models.BooleanField(default=False)
@@ -74,6 +75,8 @@ class UserAccount(AbstractBaseUser, PermissionsMixin):
     doc_image3 = models.ImageField(upload_to="images/", null=True, blank=True)
     doc_image4 = models.ImageField(upload_to="images/", null=True, blank=True)
     doc_image5 = models.ImageField(upload_to="images/", null=True, blank=True)
+
+    warnings = models.PositiveIntegerField(default = 0)
 
     #for bar owners
     business_permit = models.ImageField(upload_to="images/",null=True, blank=True)

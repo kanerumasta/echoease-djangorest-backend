@@ -14,8 +14,16 @@ class Conversation(models.Model):
 
     def __str__(self):
         return str(self.code)
-
-
+    @property
+    def last_message(self):
+        last_msg = self.messages.order_by('-created_at').first()
+        return last_msg.content if last_msg else ""
+    @property
+    def last_message_time(self):
+        last_msg = self.messages.order_by('-created_at').first()
+        if last_msg:
+            return last_msg.created_at.strftime('%I:%M %p')  # 10:20 AM format
+        return ""
 
 class Message(models.Model):
     conversation = models.ForeignKey(Conversation, related_name="messages", on_delete=models.CASCADE,null=True)

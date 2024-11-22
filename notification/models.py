@@ -31,6 +31,8 @@ class Notification(models.Model):
         ('application_accepted', 'Application Accepted'),
         ('reputation', 'Reputation'),
         ('admin', 'Admin'),
+        ('warning', 'Warning'),
+        ('reports', 'Reports'),
 
     ]
 

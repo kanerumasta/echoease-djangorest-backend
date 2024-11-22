@@ -71,9 +71,15 @@ from django.shortcuts import get_object_or_404
 @csrf_exempt
 @require_POST
 def invoice_webhook(request):
+    # Gcash 2.3%
+    # Grabpay 2.0%
+    # Maya 1.8%
+
+
     try:
         # Parse the JSON payload
         data = json.loads(request.body)
+        pprint(data)
         print("Webhook received:", data)
 
         # Extract relevant fields from the webhook data
@@ -85,15 +91,11 @@ def invoice_webhook(request):
         payment_method = data.get("payment_method")
         payment_channel = data.get("payment_channel")
 
+
+
         # Validate required fields
         if not all([invoice_id, booking_reference, status, amount]):
-            print('invoice_id', invoice_id)
-            print('booking_reference', booking_reference)
-            print('status', status)
-            print('amount', amount)
-            print("Missing required fields in the webhook data")
             return JsonResponse({"error": "Missing required fields"}, status=400)
-
         # Retrieve the booking object, return 404 if not found
         try:
             booking = Booking.objects.get(booking_reference=booking_reference)
@@ -112,6 +114,19 @@ def invoice_webhook(request):
         if not metadata:
             print(f"No metadata found for invoice_id: {invoice_id}")
 
+        #calculate processing fee base on xendit
+            # Gcash 2.3%
+    # Grabpay 2.0%
+    # Maya 1.8%
+        if payment_channel == 'GCASH':
+            processing_fee = Decimal(amount) * Decimal(0.023) #final_payment processing fee
+        elif payment_channel == 'GRABPAY':
+            processing_fee = Decimal(amount) * Decimal(0.02)
+        elif payment_channel == 'PAYMAYA':
+            processing_fee = Decimal(amount) * Decimal(0.018)
+        else:
+            processing_fee = Decimal(0)
+
         # Process payment if the status is 'PAID' and metadata is present
         if status == "PAID" and metadata:
             payment_type = metadata.get('payment_type')
@@ -123,8 +138,9 @@ def invoice_webhook(request):
                     booking=booking,
                     payment_id = invoice_id,
                     amount=amount,
-                    net_amount=amount,
+                    net_amount=amount-processing_fee,
                     payment_method=payment_method,
+                    processing_fee = processing_fee,
                     payer_channel=payment_channel,
                     payer_email=payer_email,
                     payment_type=payment_type,
@@ -134,7 +150,6 @@ def invoice_webhook(request):
                 payment.save()
                 booking.status = 'approved'
                 booking.save()
-                print(f"Payment recorded for booking_reference: {booking_reference}")
                 if payment_type == 'downpayment':
                     try:
                         notification = Notification.objects.create(
@@ -149,9 +164,26 @@ def invoice_webhook(request):
                         print("failed create notification")
                 #Send Dibursement if final payment
                 if payment_type == 'final_payment' and booking.amount is not None:
-                    payout_amount = booking.amount - (booking.amount * Decimal(0.05))
-                    payout = send_payout(amount=payout_amount,booking_id=booking.pk, channel_code="PH_GCASH")#CHANGE
+                    booking.status='completed'
+                    booking.save()
+                    echoease_fee =  booking.amount * Decimal('0.05')
 
+
+
+                    # Get the downpayment
+                    downpayment = Payment.objects.filter(payment_type="downpayment",booking=booking).first()
+                    if downpayment:
+                        payout_amount = (downpayment.net_amount + payment.net_amount) - (echoease_fee)
+
+                    # Ensure payout_amount is valid
+                    if payout_amount > 0:
+                        payout = send_payout(
+                            amount=payout_amount,
+                            booking_id=booking.pk,
+                            channel_code=booking.artist.channel_code
+                        )
+                    else:
+                        raise ValueError("Payout amount must be greater than zero.")
             else:
                 print(f"Payment type not found in metadata for booking_reference: {booking_reference}")
         else:
@@ -176,7 +208,8 @@ def payout_webhook(request):
         reference_id = data['data']['reference_id']
         payment_method = data['data']['channel_category']
         payment_channel = data['data']['channel_code']
-        amount = data['data']['amount']
+        amount = Decimal(data['data']['amount'])
+        echoease_fee = Decimal("0.05")
         print('status', status)
         if status == 'SUCCEEDED':
             if reference_id:
@@ -186,22 +219,32 @@ def payout_webhook(request):
                     print('ERROR',e)
                     return JsonResponse({'message':'Error'}, status=400)
             if booking is not None:
-                booking_client:USER = booking.client
-                payment = Payment.objects.create(
-                            user = booking.artist.user,
-                            payment_status='paid',
-                            booking=booking,
-                            amount=amount,
-                            net_amount=amount,
-                            payment_method=payment_method,
-                            payer_channel=payment_channel,
-                            payment_type="payout",
-                            title=f'Booking payment from {booking_client.first_name} {booking_client.last_name}'
+                payout_fee = Decimal("10.00")
+                downpayment = Payment.objects.filter(payment_type='downpayment', booking=booking).first()
+                final_payment = Payment.objects.filter(payment_type="final_payment", booking= booking).first()
 
-                        )
-                payment.payment_reference  = f'PAY{payment.pk:06d}'
-                payment.save()
-                booking.complete()
+                booking_client:USER = booking.client
+                try:
+                    payment = Payment.objects.create(
+                                user = booking.artist.user,
+                                payment_status='paid',
+                                booking=booking,
+                                amount=booking.amount,
+                                echoease_fee = booking.amount * echoease_fee ,
+                                net_amount=amount - payout_fee,
+                                processing_fee = downpayment.processing_fee + final_payment.processing_fee + payout_fee ,
+                                payment_method=payment_method,
+                                payer_channel=payment_channel,
+                                payment_type="payout",
+                                title=f'Booking payment from {booking_client.first_name} {booking_client.last_name}'
+
+                            )
+                    payment.payment_reference  = f'PAY{payment.pk:06d}'
+                    payment.save()
+                    booking.complete()
+                except Exception as e:
+                    print(e)
+                    return JsonResponse({'message':'Error'}, status=400)
 
                 #add reputation if no dispute booking
                 disputes = Dispute.objects.filter(booking = booking)

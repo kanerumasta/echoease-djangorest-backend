@@ -23,10 +23,18 @@ class ConversationSerializer(serializers.ModelSerializer):
     user = serializers.SerializerMethodField()
     partner = serializers.SerializerMethodField()
     unread_messages_count = serializers.SerializerMethodField()
+    last_message = serializers.SerializerMethodField()
+    last_message_time = serializers.SerializerMethodField()
 
     class Meta:
         model = Conversation
-        fields = ['code', 'user', 'partner','unread_messages_count']
+        fields = ['code', 'user', 'partner','unread_messages_count','last_message', 'last_message_time']
+
+    def get_last_message(self, obj):
+        return obj.last_message
+
+    def get_last_message_time(self, obj):
+        return obj.last_message_time
 
     def get_user(self, obj):
         # Get the current user from the request context
@@ -52,23 +60,10 @@ class ConversationSerializer(serializers.ModelSerializer):
             "user": data['user'],
             "partner": data['partner'],
             "unread_messages_count": data['unread_messages_count'],
+            "last_message": data['last_message'],
+            "last_message_time": data['last_message_time'],
         }
 
-    # def to_representation(self, instance):
-    #     rep = super().to_representation(instance)
-    #     request = self.context.get('request')
-
-    #     # Assuming you have access to the current user from the request
-    #     current_user = request.user
-
-    #     # Filter out the current user from the participants to find the partner
-    #     partner = None
-    #     participants = rep.get('participants', [])
-    #     if len(participants) > 1:
-    #         partner = next((p for p in participants if p['email'] != current_user.email), None)
-
-    #     rep['partner'] = partner
-    #     return rep
 
 class ConversationMessagesSerializer(serializers.ModelSerializer):
     messages = MessageSerializer(many=True, read_only=True)

@@ -6,7 +6,15 @@
     <title>Disputes</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        /* Global Styles */
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f8f9fa;
+            color: #343a40;
+        }
+
         /* Theme Color */
         :root {
             --theme-color: #4093f2;
@@ -18,6 +26,27 @@
 
         .navbar-brand {
             color: #fff !important;
+            font-weight: 600;
+        }
+
+        /* Table Styles */
+        .table-container {
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .table thead {
+            background-color: var(--theme-color);
+            color: #fff;
+        }
+
+        .table-striped tbody tr:nth-of-type(odd) {
+            background-color: #f3f6fb;
+        }
+
+        .table-striped tbody tr:nth-of-type(even) {
+            background-color: #ffffff;
         }
 
         .resolved-row {
@@ -28,20 +57,11 @@
             background-color: #ffe4e6;
         }
 
-        .table-container {
-            border-radius: 8px;
-            overflow: hidden;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        }
-
-        .table thead {
-            background-color : "#4093f2";
-            color: #fff;
-        }
-
+        /* Button Styles */
         .btn-info {
             background-color: var(--theme-color);
             border-color: var(--theme-color);
+            font-weight: 500;
         }
 
         .btn-info:hover {
@@ -49,9 +69,16 @@
             border-color: #3273c5;
         }
 
+        /* Footer Styles */
         footer {
             background-color: var(--theme-color);
             color: #fff;
+        }
+
+        footer p {
+            margin: 0;
+            font-size: 0.9rem;
+            font-weight: 500;
         }
     </style>
 </head>
@@ -59,13 +86,13 @@
     <!-- Navbar -->
     <nav class="navbar navbar-expand-lg py-3">
         <div class="container-fluid">
-            <a class="navbar-brand fs-3" href="#">Echoease Admin</a>
+            <a class="navbar-brand fs-3" href="{% url 'admin-dashboard' %}">Echoease Admin</a>
         </div>
     </nav>
 
     <!-- Main Content -->
     <div class="container my-5">
-        <h1 class="mb-4 text-center">Disputes</h1>
+        <h1 class="mb-4 text-center" style="color: var(--theme-color); font-weight: 600;">Disputes</h1>
         <div class="table-container bg-white">
             <table class="table table-hover table-striped mb-0">
                 <thead>
@@ -95,9 +122,6 @@
                         <td>{{ dispute.resolution }}</td>
                         <td>
                             <a href="{% url 'dispute_detail' dispute.id %}" class="btn btn-info btn-sm">View</a>
-                            {% if not dispute.is_resolved %}
-
-                            {% endif %}
                         </td>
                     </tr>
                     {% endfor %}
@@ -108,7 +132,7 @@
 
     <!-- Footer -->
     <footer class="text-center py-4">
-        <p class="mb-0">&copy; 2024 Echoease. All rights reserved.</p>
+        <p>&copy; 2024 Echoease. All rights reserved.</p>
     </footer>
 </body>
 </html>

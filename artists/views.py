@@ -89,35 +89,41 @@ class ArtistView(APIView):
             print(e)
             return Response(serializer.errors, status = status.HTTP_400_BAD_REQUEST)
 
-
-    def get(self, request,pk=None, slug=None):
-
+    def get(self, request, pk=None, slug=None):
         current = request.GET.get('current', 'False').lower() == 'true'
+
         if current:
             user = request.user
-            artist = get_object_or_404(Artist, user = user,user__is_suspended = False,user__is_deactivated=False)
-            serializer = ArtistSerializer(artist,context={'request':request})
+            artist = get_object_or_404(Artist, user=user, user__is_suspended=False, user__is_deactivated=False)
+            serializer = ArtistSerializer(artist, context={'request': request})
             return Response(serializer.data, status=status.HTTP_200_OK)
+
         if slug:
-            artist = get_object_or_404(Artist, slug = slug,user__is_suspended = False,user__is_deactivated=False)
-            serializer = ArtistSerializer(artist,context={'request':request})
-            return Response(serializer.data, status = status.HTTP_200_OK)
+            artist = get_object_or_404(Artist, slug=slug, user__is_suspended=False, user__is_deactivated=False)
+            serializer = ArtistSerializer(artist, context={'request': request})
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
         if pk:
-            artist = get_object_or_404(Artist, id = pk, user__is_suspended=False, user__is_deactivated=False)
-            serializer = ArtistSerializer(artist,context={'request':request})
-            return Response(serializer.data, status = status.HTTP_200_OK)
+            artist = get_object_or_404(Artist, id=pk, user__is_suspended=False, user__is_deactivated=False)
+            serializer = ArtistSerializer(artist, context={'request': request})
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
         else:
             min_price = request.GET.get('min_price', None)
-            max_price = request.GET.get('max_price',None)
+            max_price = request.GET.get('max_price', None)
             q = request.GET.get('q', None)
-            genres = request.GET.get('genres',None)
+            genres = request.GET.get('genres', None)
             category = request.GET.get('category', None)
 
-            artist_list = Artist.objects.filter(user__is_suspended=False, user__is_deactivated=False).annotate(
-                        total_bookings = Count('bookings__reviews'),
-                        average_rating = Avg('bookings__reviews__rating'),
-                        genre_count=Count('genres'),
-                    )
+            artist_list = Artist.objects.filter(
+                user__is_suspended=False,
+                user__is_deactivated=False
+            ).annotate(
+                total_bookings=Count('bookings__reviews'),
+                average_rating=Avg('bookings__reviews__rating'),
+                genre_count=Count('genres'),
+            )
+
             if q is not None:
                 search_terms = q.split()
                 query = Q()
@@ -127,49 +133,144 @@ class ArtistView(APIView):
                         Q(user__first_name__icontains=term) |
                         Q(user__last_name__icontains=term)
                     )
-
                 artist_list = artist_list.filter(query)
+
             if category:
                 if category == 'new':
-                    artist_list = artist_list.filter(created_at__lte=timezone.now() - timezone.timedelta(days=3))
+                    # For "new", filter artists with no bookings and order by created_at descending (newest first)
+                    artist_list = artist_list.filter(total_bookings=0).order_by('-created_at')
+
+                else:
+                    # Apply your default sorting logic for other categories
+                    artist_list = artist_list.annotate(
+                        reputation_priority=Case(
+                            When(user__reputation_score__gte=85, then=0),
+                            default=1,
+                            output_field=IntegerField()
+                        )
+                    ).order_by(
+                        '-user__reputation_score',     # Users with a higher reputation score first
+                        '-total_bookings',             # Artists with more bookings first
+                        '-average_rating',             # Higher ratings first
+                        'reputation_priority'         # Ensure high-reputation artists come before others if the score is 85 or more
+                    )
+
                 if category == 'top':
                     artist_list = artist_list.filter(
-                        created_at__lte = timezone.now() - timezone.timedelta(days=3)
+                        created_at__lte=timezone.now() - timezone.timedelta(days=3)
                     ).filter(
                         total_bookings__gte=5,
                         average_rating__gte=4.0,
                         user__reputation_score__gte=85
-                    ).order_by('-total_bookings', '-average_rating','-user__reputation_score')
-                if category == 'versatile':
-                    artist_list = artist_list.filter(genre_count__gte=3).order_by('-genre_count',)
-                if category == 'near':
+                    ).order_by('-total_bookings', '-average_rating', '-user__reputation_score')
+
+                elif category == 'versatile':
+                    artist_list = artist_list.filter(genre_count__gte=3).order_by('-genre_count')
+
+                elif category == 'near':
                     if request.user.is_authenticated:
                         municipality = request.user.profile.municipality
-                        artist_list = artist_list.filter(user__profile__municipality=municipality)
+                        artist_list = artist_list.filter(user__profile__municipality=municipality).exclude(user=request.user)
 
             if genres is not None:
                 genres_list = genres.split(',')
-
-                artist_list = artist_list.filter(
-                    genres__in=genres_list
-                ).distinct()
+                artist_list = artist_list.filter(genres__in=genres_list).distinct()
 
             if min_price is not None and max_price is not None:
                 annotated_artists = artist_list.annotate(min_rate=Min('artist_rates__amount'))
                 artist_list = annotated_artists.filter(min_rate__gte=min_price, min_rate__lte=max_price)
 
-            artist_list = artist_list.annotate(
-                reputation_priority = Case(
-                    When(user__reputation_score__gte=85,then=0),
-                    default=1,
-                    output_field=IntegerField()
-                )
-            ).order_by('-total_bookings','-average_rating','reputation_priority','-user__reputation_score')
             paginator = self.pagination_class()
             paginated_artists = paginator.paginate_queryset(artist_list, request)
-            serializer = ArtistSerializer(paginated_artists, many=True, context={'request':request})
+            serializer = ArtistSerializer(paginated_artists, many=True, context={'request': request})
 
             return paginator.get_paginated_response(serializer.data)
+
+    # def get(self, request,pk=None, slug=None):
+
+    #     current = request.GET.get('current', 'False').lower() == 'true'
+    #     if current:
+    #         user = request.user
+    #         artist = get_object_or_404(Artist, user = user,user__is_suspended = False,user__is_deactivated=False)
+    #         serializer = ArtistSerializer(artist,context={'request':request})
+    #         return Response(serializer.data, status=status.HTTP_200_OK)
+    #     if slug:
+    #         artist = get_object_or_404(Artist, slug = slug,user__is_suspended = False,user__is_deactivated=False)
+    #         serializer = ArtistSerializer(artist,context={'request':request})
+    #         return Response(serializer.data, status = status.HTTP_200_OK)
+    #     if pk:
+    #         artist = get_object_or_404(Artist, id = pk, user__is_suspended=False, user__is_deactivated=False)
+    #         serializer = ArtistSerializer(artist,context={'request':request})
+    #         return Response(serializer.data, status = status.HTTP_200_OK)
+    #     else:
+    #         min_price = request.GET.get('min_price', None)
+    #         max_price = request.GET.get('max_price',None)
+    #         q = request.GET.get('q', None)
+    #         genres = request.GET.get('genres',None)
+    #         category = request.GET.get('category', None)
+
+    #         artist_list = Artist.objects.filter(user__is_suspended=False, user__is_deactivated=False).annotate(
+    #                     total_bookings = Count('bookings__reviews'),
+    #                     average_rating = Avg('bookings__reviews__rating'),
+    #                     genre_count=Count('genres'),
+    #                 )
+    #         if q is not None:
+    #             search_terms = q.split()
+    #             query = Q()
+    #             for term in search_terms:
+    #                 query |= (
+    #                     Q(stage_name__icontains=term) |
+    #                     Q(user__first_name__icontains=term) |
+    #                     Q(user__last_name__icontains=term)
+    #                 )
+
+    #             artist_list = artist_list.filter(query)
+
+
+
+    #         if category:
+    #             if category == 'new':
+    #                 artist_list = artist_list.filter().order_by('created_at')
+    #             if category == 'top':
+    #                 artist_list = artist_list.filter(
+    #                     created_at__lte = timezone.now() - timezone.timedelta(days=3)
+    #                 ).filter(
+    #                     total_bookings__gte=5,
+    #                     average_rating__gte=4.0,
+    #                     user__reputation_score__gte=85
+    #                 ).order_by('-total_bookings', '-average_rating','-user__reputation_score')
+    #             if category == 'versatile':
+    #                 artist_list = artist_list.filter(genre_count__gte=3).order_by('-genre_count',)
+    #             if category == 'near':
+    #                 if request.user.is_authenticated:
+    #                     municipality = request.user.profile.municipality
+    #                     artist_list = artist_list.filter(user__profile__municipality=municipality).exclude(user=request.user)
+
+    #         if genres is not None:
+    #             genres_list = genres.split(',')
+
+    #             artist_list = artist_list.filter(
+    #                 genres__in=genres_list
+    #             ).distinct()
+
+    #         if min_price is not None and max_price is not None:
+    #             annotated_artists = artist_list.annotate(min_rate=Min('artist_rates__amount'))
+    #             artist_list = annotated_artists.filter(min_rate__gte=min_price, min_rate__lte=max_price)
+
+    #         artist_list = artist_list.annotate(
+    #             reputation_priority = Case(
+    #                 When(user__reputation_score__gte=85,then=0),
+    #                 default=1,
+    #                 output_field=IntegerField()
+    #             )
+    #         ).order_by('-total_bookings','-average_rating','reputation_priority','-user__reputation_score')
+
+
+    #         paginator = self.pagination_class()
+    #         paginated_artists = paginator.paginate_queryset(artist_list, request)
+    #         serializer = ArtistSerializer(paginated_artists, many=True, context={'request':request})
+
+    #         return paginator.get_paginated_response(serializer.data)
 
 
 
@@ -400,17 +501,6 @@ class RateView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-
-class ArtistConnectionsView(APIView):
-    def get(self, request):
-        artist = get_object_or_404(Artist, user=request.user)
-        try:
-            serializer = ArtistConnectionsSerializer(artist)
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        except Exception as e:
-            print(e)
-            return Response({'message':'error fetching your connections'}, status=status.HTTP_400_BAD_REQUEST)
-
 class ConnectionRequestView(APIView):
     permission_classes = [IsArtist]
     def get(self, request, id=None):
@@ -615,6 +705,31 @@ class ArtistFollowersView(APIView):
         serializer = UserAccountSerializer(artist.followers, many=True, context={'request':request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+class ReportPortfolioItemView(APIView):
+    def post(self, request, item_id):
+        item = get_object_or_404(PortfolioItem, pk= item_id)
+        item.reported = True
+        item.save()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
-# class BusinessBoostView(APIView):
-#     def post(self, request):
+
+
+class MyArtistConnectionsView(APIView):
+    def get(self, request):
+        artist = get_object_or_404(Artist, user=request.user)
+        try:
+            serializer = ArtistConnectionsSerializer(artist)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Exception as e:
+            print(e)
+            return Response({'message':'error fetching your connections'}, status=status.HTTP_400_BAD_REQUEST)
+
+class ArtistConnectionsView(APIView):
+    def get(self, request, artist_id):
+        artist = get_object_or_404(Artist, id=artist_id)
+        try:
+            serializer = ArtistConnectionsSerializer(artist)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Exception as e:
+            print(e)
+            return Response({'message':'error fetching connections of this artist'}, status=status.HTTP_400_BAD_REQUEST)

@@ -13,6 +13,7 @@ from .views import (
     SamplePortfolioItemView,
     ConnectionRequestView,
     ArtistConnectionsView,
+    MyArtistConnectionsView,
     SentConnectionRequestView,
     ReceivedConnectionRequestView,
     ArtistFollowersView,
@@ -22,7 +23,9 @@ from .views import (
     get_recommended_artists,
     remove_genre,
     add_genre,
-    FollowingView
+    FollowingView,
+    ReportPortfolioItemView
+
 )
 
 # ARTIST URLS
@@ -43,6 +46,7 @@ urlpatterns = [
     path('unfollow', unfollow),
     path('portfolio-item',PortfolioItemView.as_view()),
     path('portfolio-item/<int:id>',PortfolioItemView.as_view()),
+    path('portfolio-item/<int:item_id>/report',ReportPortfolioItemView.as_view()),
     path('portfolio/<int:artist_id>', PortfolioView.as_view()),
     path('portfolio-item-media',PortfolioItemMediaView.as_view()),
     path('portfolio-item-media/<int:id>',PortfolioItemMediaView.as_view()),
@@ -54,7 +58,8 @@ urlpatterns = [
     path('connection-requests/<int:id>',ConnectionRequestView.as_view()),
     path('connection-requests/sent',SentConnectionRequestView.as_view()),
     path('connection-requests/received', ReceivedConnectionRequestView.as_view()),
-    path('connections', ArtistConnectionsView.as_view()),
+    path('connections', MyArtistConnectionsView.as_view()),
+    path('artist-connections/<int:artist_id>', ArtistConnectionsView.as_view()),
     path('connections/<int:artist_id>/disconnect', DisconnectArtistView.as_view()),
     path('get-recommended-artists', get_recommended_artists),
     path('<int:artist_id>/followers', ArtistFollowersView.as_view()),

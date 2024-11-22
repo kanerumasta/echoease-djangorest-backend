@@ -35,7 +35,8 @@ def create_payment_invoice(reference_id,redirect_url, amount,payment_type, custo
         "metadata":{
             "payment_type":str(payment_type)
         },
-        "success_redirect_url":redirect_url
+        "success_redirect_url":redirect_url,
+         "payment_methods": ["GCASH","PAYMAYA","GRABPAY"]
     }
 
     try:

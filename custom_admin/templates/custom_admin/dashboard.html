@@ -3,11 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Disputes</title>
+    <title>Dashboard</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        /* Theme Color */
+        /* Global Styles */
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f8f9fa;
+            color: #343a40;
+        }
+
+        /* Navbar and Footer */
         :root {
             --theme-color: #4093f2;
         }
@@ -20,80 +30,189 @@
             color: #fff !important;
         }
 
-        .resolved-row {
-            background-color: #eafaf1;
-        }
-
-        .unresolved-row {
-            background-color: #ffe4e6;
-        }
-
-        .table-container {
-            border-radius: 8px;
-            overflow: hidden;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        }
-
-        .btn-info {
-            background-color: var(--theme-color);
-            border-color: var(--theme-color);
-        }
-
-        .btn-info:hover {
-            background-color: #3273c5;
-            border-color: #3273c5;
-        }
-
         footer {
             background-color: var(--theme-color);
             color: #fff;
         }
+
+        footer p {
+            margin: 0;
+            font-weight: 500;
+        }
+
+        /* Card and Table Styles */
+        .card {
+            border: none;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .user-table {
+            display: none;
+        }
+
+        table {
+            border-radius: 8px;
+            overflow: hidden;
+            background: #fff;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        table th, table td {
+            vertical-align: middle;
+        }
+
+        h5 {
+            font-weight: 600;
+        }
     </style>
 </head>
 <body>
-    <!-- Navbar -->
     <nav class="navbar navbar-expand-lg py-3">
         <div class="container-fluid">
             <a class="navbar-brand fs-3" href="#">Echoease Admin</a>
+            <div>
+            <a  href="{% url 'chat_list' %}" style="background-color: transparent;" class="btn">
+                <i style="color:#fff;" class="fas fa-comments"></i> <!-- Chat icon -->
+            </a>
+            <a  href="{% url 'admin_users' %}" style="background-color: transparent;" class="btn">
+                <i style="color:#fff;" class="fas fa-users"></i> <!-- Chat icon -->
+            </a>
+
+        </div>
         </div>
     </nav>
 
     <!-- Main Content -->
-    <div class="container my-5">
-        <h1 class="mb-4 text-center">Disputes</h1>
-        <div class="table-container bg-white">
-            <table class="table table-hover table-striped mb-0">
+    <div class="container mt-4">
+        <h1 class="mb-4" style="font-weight: 600; text-align: center; color: #343a40;">Dashboard</h1>
+        <div class="row">
+            <!-- Artist Users Card -->
+            <div class="col-md-3">
+                <div class="card text-white bg-primary mb-3" onclick="showTable('artist-users-table')" style="cursor: pointer;">
+                    <div class="card-body">
+                        <h5 class="card-title">Artist Users</h5>
+                        <p class="card-text display-6">{{ artist_users_count }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Client Users Card -->
+            <div class="col-md-3">
+                <div class="card text-white bg-success mb-3" onclick="showTable('client-users-table')" style="cursor: pointer;">
+                    <div class="card-body">
+                        <h5 class="card-title">Client Users</h5>
+                        <p class="card-text display-6">{{ client_users_count }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Total Users Card -->
+            <div class="col-md-3">
+                <div class="card text-white bg-warning mb-3" onclick="showTable('total-users-table')" style="cursor: pointer;">
+                    <div class="card-body">
+                        <h5 class="card-title">Total Users</h5>
+                        <p class="card-text display-6">{{ total_users_count }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Disputes Card -->
+            <div class="col-md-3">
+                <a href="{% url 'disputes' %}" style="text-decoration: none;">
+                    <div class="card text-white bg-danger mb-3" style="cursor: pointer;">
+                        <div class="card-body">
+                            <h5 class="card-title">Disputes</h5>
+                            <p class="card-text display-6">{{ disputes_count }}</p>
+                        </div>
+                    </div>
+                </a>
+            </div>
+            <!-- Reported Contents Card -->
+            <div class="col-md-3">
+                <a href="{% url 'reported_portfolio_items' %}" style="text-decoration: none;">
+                    <div class="card text-white bg-danger mb-3" style="cursor: pointer;">
+                        <div class="card-body">
+                            <h5 class="card-title">Report Contents</h5>
+                            <p class="card-text display-6">{{ reported_contents_count }}</p>
+                        </div>
+                    </div>
+                </a>
+            </div>
+            <!-- Reported Contents Card -->
+            <div class="col-md-3">
+                <a href="{% url 'revenue-details' %}" style="text-decoration: none;">
+                    <div class="card text-white bg-primary mb-3" style="cursor: pointer;">
+                        <div class="card-body">
+                            <h5 class="card-title">Total Revenue</h5>
+                            <p class="card-text display-6">&#8369;{{ total_revenue }}</p>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        </div>
+
+        <!-- Artist Users Table -->
+        <div id="artist-users-table" class="user-table mt-3">
+            <h5>Artist Users</h5>
+            <table class="table table-hover">
                 <thead class="table-dark">
                     <tr>
-                        <th>#</th>
-                        <th>Booking</th>
-                        <th>Type</th>
-                        <th>Status</th>
-                        <th>Reason</th>
-                        <th>Created At</th>
-                        <th>Description</th>
-                        <th>Resolution</th>
-                        <th>Actions</th>
+                        <th>Name</th>
+                        <th>Email</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <!-- Display unresolved disputes first -->
-                    {% for dispute in disputes %}
-                    <tr class="{% if not dispute.is_resolved %}unresolved-row{% else %}resolved-row{% endif %}">
-                        <td>{{ forloop.counter }}</td>
-                        <td>{{ dispute.booking }}</td>
-                        <td>{{ dispute.get_dispute_type_display }}</td>
-                        <td>{{ dispute.get_status_display }}</td>
-                        <td>{{ dispute.get_reason_display }}</td>
-                        <td>{{ dispute.created_at|date:"M d, Y H:i" }}</td>
-                        <td>{{ dispute.description }}</td>
-                        <td>{{ dispute.resolution }}</td>
-                        <td>
-                            <a href="{% url 'dispute_detail' dispute.id %}" class="btn btn-info btn-sm">View</a>
-                            {% if not dispute.is_resolved %}
-                            <button class="btn btn-success btn-sm">Resolve</button>
-                            {% endif %}
-                        </td>
+                    {% for user in artist_users %}
+                    <tr onclick="window.location='{% url 'user_detail' user.id %}'" style="cursor: pointer;">
+                        <td>{{ user.first_name }}</td>
+                        <td>{{ user.email }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Client Users Table -->
+        <div id="client-users-table" class="user-table mt-3">
+            <h5>Client Users</h5>
+            <table class="table table-hover">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in client_users %}
+                    <tr onclick="window.location='{% url 'user_detail' user.id %}'" style="cursor: pointer;">
+                        <td>{{ user.first_name }}</td>
+                        <td>{{ user.email }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Total Users Table -->
+        <div id="total-users-table" class="user-table mt-3">
+            <h5>Total Users</h5>
+            <table class="table table-hover">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in total_users %}
+                    <tr onclick="window.location='{% url 'user_detail' user.id %}'" style="cursor: pointer;">
+                        <td>{{ user.first_name }}</td>
+                        <td>{{ user.email }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -105,5 +224,20 @@
     <footer class="text-center py-4">
         <p class="mb-0">&copy; 2024 Echoease. All rights reserved.</p>
     </footer>
+
+    <script>
+        function showTable(tableId) {
+            // Hide all tables
+            document.querySelectorAll('.user-table').forEach(function(table) {
+                table.style.display = 'none';
+            });
+
+            // Show the selected table
+            const table = document.getElementById(tableId);
+            if (table) {
+                table.style.display = 'block';
+            }
+        }
+    </script>
 </body>
 </html>

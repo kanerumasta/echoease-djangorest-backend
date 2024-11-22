@@ -147,3 +147,114 @@ def set_conversation_read(request, code):
     conversation = get_object_or_404(Conversation, code=code)
     messages = conversation.messages.update(is_read=True)
     return Response(status=status.HTTP_204_NO_CONTENT)
+
+from django.shortcuts import get_object_or_404
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from .models import Conversation, Message
+from users.models import UserAccount
+from django.core.paginator import Paginator
+from .serializers import ConversationSerializer
+
+class AdminChatSupportView(APIView):
+    def get(self, request):
+        current_user = request.user
+
+        # Step 1: Find the first available admin with 'chat_support' role
+        admin = UserAccount.objects.filter(is_chat_support=True).first()
+
+        if not admin:
+            return Response({"message": "No chat support admin available."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Step 2: Check if a conversation exists between the user and the admin
+        conversation = Conversation.objects.filter(participants=current_user).filter(participants = admin).first()
+
+        # Step 3: If no conversation exists, create a new one
+        if conversation is None:
+            conversation = Conversation.objects.create()
+            conversation.participants.add(current_user, admin)  # Add both user and admin to the conversation
+
+            # Step 4: Send a greeting message from the admin to the user
+            greeting_message = "Hello! How can we assist you today?"
+            Message.objects.create(
+                conversation=conversation,
+                content=greeting_message,
+                author=admin  # Admin sends the greeting
+            )
+
+        # Step 5: Retrieve messages for the conversation
+        messages = conversation.messages.filter(mark_deleted=False).order_by('-created_at')
+
+        # Set messages as is_read
+        messages.update(is_read=True)
+
+        # Step 6: Paginate messages (show 15 messages per page)
+        paginator = Paginator(messages, 15)
+        page_number = request.GET.get('page', 1)
+        page_obj = paginator.get_page(page_number)
+
+        # Step 7: Prepare response data
+        response_data = {
+            'code': str(conversation.code),
+            'messages': [{
+                'id': message.id,
+                'content': message.content,
+                'author': message.author.email,
+                'created_at': message.created_at,
+                'is_read': message.is_read
+            } for message in reversed(page_obj)],
+            'has_next': page_obj.has_next(),
+            'has_previous': page_obj.has_previous(),
+            'current_page': page_obj.number,
+            'total_pages': paginator.num_pages,
+        }
+
+        return Response(response_data, status=status.HTTP_200_OK)
+
+    def post(self, request):
+        current_user = request.user
+
+        # Step 1: Find the first available admin with 'chat_support' role
+        admin = UserAccount.objects.filter(is_chat_support=True).first()
+
+        if not admin:
+            return Response({"message": "No chat support admin available."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Step 2: Check if a conversation exists between the user and the admin
+        conversation = Conversation.objects.filter(participants=current_user).filter(participants = admin).first()
+
+        # Step 3: If no conversation exists, create a new one
+        if conversation is None:
+            conversation = Conversation.objects.create()
+            conversation.participants.add(current_user, admin)  # Add both user and admin to the conversation
+
+            # Step 4: Send a greeting message from the admin to the user
+            greeting_message = "Hello! How can we assist you today?"
+            Message.objects.create(
+                conversation=conversation,
+                content=greeting_message,
+                author=admin  # Admin sends the greeting
+            )
+
+        # Step 5: Get message content from request data
+        message_content = request.data.get('content')
+
+        if not message_content:
+            return Response({"message": "Message content is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Step 6: Create the new message from the user
+        message = Message.objects.create(
+            conversation=conversation,
+            content=message_content,
+            author=current_user
+        )
+
+        # Step 7: Return the new message data in the response
+        return Response({
+            'id': message.id,
+            'content': message.content,
+            'author': message.author.email,
+            'created_at': message.created_at,
+            'is_read': message.is_read
+        }, status=status.HTTP_201_CREATED)
