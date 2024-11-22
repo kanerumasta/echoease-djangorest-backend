@@ -12,9 +12,24 @@ from .serializers import (
 )
 
 class NotificationPagination(pagination.PageNumberPagination):
-    page_size = 7
+    page_size = 6
     page_size_query_param = 'page_size'
     max_page_size = 20
+
+    def get_paginated_response(self, data):
+        return Response({
+            'links': {
+                'next': self.get_next_link(),
+                'previous': self.get_previous_link()
+            },
+            'total_pages': self.page.paginator.num_pages,
+            'current_page': self.page.number,
+            'has_next': self.page.has_next(),
+            'has_previous': self.page.has_previous(),
+            'count': self.page.paginator.count,
+            'results': data
+        },status=status.HTTP_200_OK)
+
 
 
 
@@ -52,8 +67,8 @@ class NotificationView(APIView):
                 paginated_notifications = paginator.paginate_queryset(notifications, request)
 
                 serializer = NotificationSerializer(paginated_notifications, many=True)
-                time.sleep(1.5)
-                return Response(serializer.data, status=status.HTTP_200_OK)
+
+                return paginator.get_paginated_response(serializer.data)
             except Exception as e:
                 print(e)
                 return Response({'message':'Error fetching old notifications.'},status=status.HTTP_400_BAD_REQUEST)
@@ -80,7 +95,25 @@ class NotificationView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-@api_view(['GET'])
-def clear_all(request):
-    pass
+class NotificationsView(APIView):
+    def get(self, request, *args, **kwargs):
+        notifications  = Notification.objects.filter(user = request.user)
+        serializer = NotificationSerializer(notifications, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
+
+@api_view(['POST'])
+def mark_all_as_read(request):
+    user = request.user
+    notifications = Notification.objects.filter(user=user, is_read=False)
+    for notification in notifications:
+        notification.read()
+    return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@api_view(['POST'])
+def clear_all_old_notifications(request):
+    user = request.user
+    notifications = Notification.objects.filter(user=user, is_read=True)
+    notifications.delete()
+    return Response(status=status.HTTP_204_NO_CONTENT)

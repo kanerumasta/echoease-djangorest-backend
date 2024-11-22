@@ -7,24 +7,43 @@ from artists.models import Artist
 from django.db.models import Q
 from rest_framework.views import APIView
 from rest_framework import status
+from rest_framework.decorators import api_view
+from django.conf import settings
+import time
 from .serializers import (
     ConversationSerializer
 )
 from rest_framework.response import Response
+from users.models import UserAccount
 
 class ConversationsView(APIView):
     def get(self, request):
-        conversations = Conversation.objects.filter(participants = request.user)
+        conversations = Conversation.objects.filter(participants = request.user).exclude(messages__isnull=True).exclude(deleted_for = request.user).exclude(blocked_users__isnull=False)
         serializer = ConversationSerializer(conversations, many=True, context={'request':request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+class ConversationDetailView(APIView):
+    def get(self, request, code):
+        conversation = get_object_or_404(Conversation, code=code)
+        serializer = ConversationSerializer(conversation, context={'request':request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def delete(self, request, code):
+        conversation = get_object_or_404(Conversation, code=code)
+
+        messages  = conversation.messages
+        for message in messages.all():
+            message.mark_deleted = True
+            message.save()
+            print('deleted')
+
+        conversation.deleted_for.add(request.user)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class ConversationView(APIView):
     def get(self, request, code=None, slug=None):
-        print('USER', request.user)
         current_user = request.user
-
         # Step 1: Get or create the conversation
         if code:
             # Retrieve conversation by code
@@ -34,21 +53,25 @@ class ConversationView(APIView):
             artist = get_object_or_404(Artist, slug=slug)
 
             # Check if conversation already exists with both participants
-            conversation = Conversation.objects.filter(
-                Q(participants=current_user) & Q(participants=artist.user)
-            ).first()
+            conversation = Conversation.objects.filter(participants=current_user).filter(participants=artist.user).first()
+
+            if conversation is not None:
+                conversation.deleted_for.clear()
 
             # If no conversation exists, create a new one
             if not conversation:
                 conversation = Conversation.objects.create()
-                conversation.participants.add(current_user, artist.user)
+                conversation.participants.add(current_user, artist.user)  # Ensure participants are added here
 
-            # Step 2: Retrieve messages for the conversation
-        messages = conversation.messages.all().order_by('-created_at') # Order by latest
+        # Step 2: Retrieve messages for the conversation
+        messages = conversation.messages.filter(mark_deleted=False).order_by('-created_at')  # Order by latest
 
-        # messages = messages.reverse()
+        #Set messages as is_read
+        messages.update(is_read=True)
+
+
         # Step 3: Paginate messages (show 15 messages per page)
-        paginator = Paginator(messages, 8)
+        paginator = Paginator(messages, 15)
         page_number = request.GET.get('page', 1)
         page_obj = paginator.get_page(page_number)
 
@@ -59,7 +82,8 @@ class ConversationView(APIView):
                 'id': message.id,
                 'content': message.content,
                 'author': message.author.email,
-                'created_at': message.created_at
+                'created_at': message.created_at,
+                'is_read':message.is_read
             } for message in reversed(page_obj)],
             'has_next': page_obj.has_next(),
             'has_previous': page_obj.has_previous(),
@@ -67,102 +91,170 @@ class ConversationView(APIView):
             'total_pages': paginator.num_pages,
         }
 
+
         return JsonResponse(response_data)
 
-# from django.shortcuts import get_object_or_404
-# from rest_framework import status
-# from rest_framework.views  import APIView
-# from .serializers import MessageSerializer, ConversationSerializer,CreateConversationSerializer, ConversationMessagesSerializer
-# from .models import Conversation
-# from users.models import UserAccount
-# from artists.models import Artist
-# from rest_framework.response import Response
-# from django.db.models import Count, Q
+
+class BlockUserView(APIView):
+    def post(self, request, conversation_code, user_id):
+
+        if not conversation_code or not user_id:
+            return Response({"message": "Code and User Id is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        conversation = get_object_or_404(Conversation, code=conversation_code)
+        user_to_block = get_object_or_404(UserAccount, id=user_id)
+
+        # Check if the user is already blocked
+        if user_to_block in conversation.blocked_users.all():
+            return Response({"message": "User is already blocked."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Add the user to the blocked_users list
+        conversation.blocked_users.add(user_to_block)
+        return Response({"message": "User blocked successfully."}, status=status.HTTP_200_OK)
+
+    def get(self, request):
+        blocked_conversations = Conversation.objects.filter(participants=request.user,blocked_users__isnull=False).distinct()
+        serializer = ConversationSerializer(blocked_conversations,context={'request':request}, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+class UnblockUserView(APIView):
+    def post(self, request):
+        conversation_code = request.data.get('conversation_code')
+        user_id = request.data.get('user_id')
+        conversation = get_object_or_404(Conversation, code=conversation_code)
+        user_to_unblock = get_object_or_404(UserAccount, id=user_id)
+        # Remove the user from the blocked_users list
+        conversation.blocked_users.remove(user_to_unblock)
+        return Response({"message": "User unblocked successfully."}, status=status.HTTP_200_OK)
+
+@api_view(['GET'])  # Fetch all unread messages count
+def get_unread_messages_count(request):
+    current_user = request.user
+
+    # Get all conversations the current user is a part of
+    user_conversations = Conversation.objects.filter(participants=current_user)
+
+    # Count unread messages in those conversations
+    unread_messages_count = Message.objects.filter(
+        conversation__in=user_conversations,  # Use the relationship to filter by conversation
+        is_read=False
+    ).exclude(author=current_user).count()
+    return Response({'unread_messages_count': unread_messages_count}, status=status.HTTP_200_OK)
 
 
-# def get_conversation_by_code(request,code):
-#     conversation = get_object_or_404(Conversation, code=code)
+@api_view(['POST'])
+def set_conversation_read(request, code):
+    conversation = get_object_or_404(Conversation, code=code)
+    messages = conversation.messages.update(is_read=True)
+    return Response(status=status.HTTP_204_NO_CONTENT)
 
+from django.shortcuts import get_object_or_404
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from .models import Conversation, Message
+from users.models import UserAccount
+from django.core.paginator import Paginator
+from .serializers import ConversationSerializer
 
+class AdminChatSupportView(APIView):
+    def get(self, request):
+        current_user = request.user
 
+        # Step 1: Find the first available admin with 'chat_support' role
+        admin = UserAccount.objects.filter(is_chat_support=True).first()
 
-# # class ConversationView(APIView):
-# #     def get(self,request,code = None, slug=None):
-# #         user = request.user
-# #         if code:
-# #             conversation = Conversation.objects.get(code = code)
-# #             serializer = ConversationSerializer(conversation,context={'request':request})
-# #             return Response(serializer.data, status = status.HTTP_200_OK)
+        if not admin:
+            return Response({"message": "No chat support admin available."}, status=status.HTTP_400_BAD_REQUEST)
 
-# #         if slug:
-# #             # Handling conversations with an artist
-# #             artist = get_object_or_404(Artist, slug=slug)
+        # Step 2: Check if a conversation exists between the user and the admin
+        conversation = Conversation.objects.filter(participants=current_user).filter(participants = admin).first()
 
+        # Step 3: If no conversation exists, create a new one
+        if conversation is None:
+            conversation = Conversation.objects.create()
+            conversation.participants.add(current_user, admin)  # Add both user and admin to the conversation
 
-# #             # Check if conversation already exists with the artist
-# #             conversation = Conversation.objects.filter(participants=artist.user).filter( participants=user).first()
+            # Step 4: Send a greeting message from the admin to the user
+            greeting_message = "Hello! How can we assist you today?"
+            Message.objects.create(
+                conversation=conversation,
+                content=greeting_message,
+                author=admin  # Admin sends the greeting
+            )
 
-# #             if not conversation:
-# #                 # Create a new conversation
-# #                 conversation = Conversation.objects.create()
-# #                 conversation.participants.add(user)
-# #                 conversation.participants.add(artist.user)
-# #                 conversation.save()
-# #             serializer = ConversationSerializer(conversation,context={'request':request})
-# #             return Response(serializer.data, status= status.HTTP_200_OK)
-# #         conversations = Conversation.objects.filter(participants=request.user)
-# #         serializer = ConversationSerializer(conversations, many=True,context={'request':request})
-# #         return Response(serializer.data, status=status.HTTP_200_OK)
+        # Step 5: Retrieve messages for the conversation
+        messages = conversation.messages.filter(mark_deleted=False).order_by('-created_at')
 
+        # Set messages as is_read
+        messages.update(is_read=True)
 
-# #     def post(self,request):
-# #         user = request.user
+        # Step 6: Paginate messages (show 15 messages per page)
+        paginator = Paginator(messages, 15)
+        page_number = request.GET.get('page', 1)
+        page_obj = paginator.get_page(page_number)
 
+        # Step 7: Prepare response data
+        response_data = {
+            'code': str(conversation.code),
+            'messages': [{
+                'id': message.id,
+                'content': message.content,
+                'author': message.author.email,
+                'created_at': message.created_at,
+                'is_read': message.is_read
+            } for message in reversed(page_obj)],
+            'has_next': page_obj.has_next(),
+            'has_previous': page_obj.has_previous(),
+            'current_page': page_obj.number,
+            'total_pages': paginator.num_pages,
+        }
 
-# #         # Handling conversations with another user
-# #         receiver_id = request.data.get('receiver')
+        return Response(response_data, status=status.HTTP_200_OK)
 
-# #         if not receiver_id:
-# #             return Response({'message': 'Receiver ID is required'}, status=status.HTTP_400_BAD_REQUEST)
+    def post(self, request):
+        current_user = request.user
 
-# #         receiver_id = int(receiver_id)
+        # Step 1: Find the first available admin with 'chat_support' role
+        admin = UserAccount.objects.filter(is_chat_support=True).first()
 
-# #         if user.id == receiver_id:
-# #             return Response({'message': 'You can\'t create a conversation with yourself'}, status=status.HTTP_400_BAD_REQUEST)
+        if not admin:
+            return Response({"message": "No chat support admin available."}, status=status.HTTP_400_BAD_REQUEST)
 
-# #         receiver = get_object_or_404(UserAccount, id=receiver_id)
+        # Step 2: Check if a conversation exists between the user and the admin
+        conversation = Conversation.objects.filter(participants=current_user).filter(participants = admin).first()
 
-# #         # Check if conversation already exists with the receiver
-# #         conversation = Conversation.objects.filter(participants=receiver).filter(participants = user).first()
+        # Step 3: If no conversation exists, create a new one
+        if conversation is None:
+            conversation = Conversation.objects.create()
+            conversation.participants.add(current_user, admin)  # Add both user and admin to the conversation
 
-# #         if not conversation:
-# #             # Create a new conversation
-# #             conversation = Conversation.objects.create()
-# #             conversation.participants.add(user, receiver)
-# #             conversation.save()
+            # Step 4: Send a greeting message from the admin to the user
+            greeting_message = "Hello! How can we assist you today?"
+            Message.objects.create(
+                conversation=conversation,
+                content=greeting_message,
+                author=admin  # Admin sends the greeting
+            )
 
-# #         # Serialize and return the conversation
-# #         serializer = ConversationSerializer(conversation)
-# #         return Response(serializer.data, status=status.HTTP_200_OK)
+        # Step 5: Get message content from request data
+        message_content = request.data.get('content')
 
+        if not message_content:
+            return Response({"message": "Message content is required."}, status=status.HTTP_400_BAD_REQUEST)
 
-# # class MessagesView(APIView):
-# #     def get(self,request, code):
-# #         conversation = get_object_or_404(Conversation, code = code)
-# #         message_serializer = MessageSerializer(conversation.messages, many=True) # type: ignore
-# #         return Response(message_serializer.data, status = status.HTTP_200_OK)
+        # Step 6: Create the new message from the user
+        message = Message.objects.create(
+            conversation=conversation,
+            content=message_content,
+            author=current_user
+        )
 
-
-# #     def post(self, request):
-# #         serializer = MessageSerializer(data = request.data)
-# #         if serializer.is_valid():
-# #             serializer.save()
-# #             return Response(serializer.data, status=status.HTTP_201_CREATED)
-# #         return Response(serializer.errors, status = status.HTTP_400_BAD_REQUEST)
-
-
-# # def get_my_conversations(request):
-# #     user = request.user
-# #     conversations = user.conversations.all()
-# #     serializer = ConversationSerializer(conversations, many=True)
-# #     return Response(serializer.data, status = status.HTTP_200_OK)
+        # Step 7: Return the new message data in the response
+        return Response({
+            'id': message.id,
+            'content': message.content,
+            'author': message.author.email,
+            'created_at': message.created_at,
+            'is_read': message.is_read
+        }, status=status.HTTP_201_CREATED)

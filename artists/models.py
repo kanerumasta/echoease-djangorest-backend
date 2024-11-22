@@ -1,12 +1,11 @@
 
 from django.db import models
-from django.conf import settings
 from django.core.exceptions import ValidationError
-from cloudinary.models import CloudinaryField
-from django.utils.text import slugify
 from django.contrib.auth import get_user_model
-from .validators import date_not_future
-from decimal import Decimal
+from cryptography.fernet import Fernet
+from django.conf import settings
+
+
 
 User = get_user_model()
 
@@ -27,6 +26,7 @@ class Genre(models.Model):
 
 class ArtistApplication(models.Model):
     bio = models.TextField(null=True, blank=True)
+    stage_name = models.CharField(max_length=255, null=True, blank=True)
     sample_video1 = models.FileField(upload_to="videos/", null=True, blank=True)
     sample_video2 = models.FileField(upload_to="videos/", null=True, blank=True)
     sample_video3 = models.FileField(upload_to="videos/", null=True, blank=True)
@@ -61,6 +61,11 @@ class ArtistApplication(models.Model):
     front_id = models.ImageField(upload_to="images/", null=True, blank=True)
     back_id = models.ImageField(upload_to="images/", null=True, blank=True)
 
+    #BANK DETAIL
+    channel_code = models.CharField(max_length=20, null=True, blank=True)
+    account_holder_name = models.CharField(max_length=255, null=True, blank=True)
+    account_number = models.CharField(max_length=255,null=True, blank=True)
+
     def __str__(self):
         if self.user:
             return f'Application {self.user}'
@@ -71,6 +76,8 @@ class Artist(models.Model):
     bio = models.TextField(null=True, blank=True)
     slug = models.SlugField(max_length=255, blank=True, null=True)
     genres = models.ManyToManyField(Genre, blank=True)
+    stage_name = models.CharField(max_length=255, null=True, blank=True)
+
 
     # Socials
     fb_link = models.CharField(max_length=255, null=True, blank=True)
@@ -91,8 +98,9 @@ class Artist(models.Model):
     user = models.OneToOneField(User,related_name="artist",on_delete=models.CASCADE, unique=True)
     followers = models.ManyToManyField(User, related_name="artists_followed", blank=True)
 
-    date_approved = models.DateField(null=True, blank=True)
-    time_approved = models.TimeField(null=True, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     #new fields
     spotify =models.CharField(max_length=255, null=True, blank=True)
@@ -104,6 +112,29 @@ class Artist(models.Model):
     award_image3 = models.ImageField(upload_to="images/awards", null=True, blank=True)
 
     connections= models.ManyToManyField('self', symmetrical=True, blank=True)
+
+    #BANK DETAIL
+    channel_code = models.CharField(max_length=20, null=True, blank=True)
+    account_holder_name = models.CharField(max_length=255, null=True, blank=True)
+    encrypted_account_number = models.BinaryField(max_length=255,null=True, blank=True)
+    account_number = models.CharField(max_length=255,null=True, blank=True)
+
+    def set_account_number(self, account_number):
+        if account_number:
+            cipher = Fernet(settings.ENCRYPTION_KEY)
+            self.encrypted_account_number = cipher.encrypt(account_number.encode())
+            self.save()
+        else:
+            self.encrypted_account_number = None
+            self.save()
+
+    def get_account_number(self):
+        if self.encrypted_account_number:
+            cipher = Fernet(settings.ENCRYPTION_KEY)
+            return cipher.decrypt(bytes(self.encrypted_account_number)).decode()
+        return None
+
+
 
     def __str__(self):
         return f'{self.user.first_name} {self.user.last_name}'.title()
@@ -129,9 +160,10 @@ class PortfolioItem(models.Model):
     title = models.CharField(max_length = 255)
     description = models.CharField(max_length = 255, null=True, blank=True)
     group = models.CharField(max_length=50,default="portfolio",choices=GROUPS,null=True, blank=True)
+    reported = models.BooleanField(default=False)
 
     def __str__(self) -> str:
-        return self.title or 'Unknown Portfolio Item'
+        return f"{self.title} {self.portfolio.artist}"
 
 
 class PortfolioItemMedia(models.Model):
@@ -145,92 +177,17 @@ class PortfolioItemMedia(models.Model):
     file = models.FileField(upload_to="portfolio_item_medias/", null=False, blank=False)
 
     def __str__(self):
-        return f'{self.media_type.capitalize()} for {self.portfolio_item.title}'
+        return f'{self.media_type.capitalize()} for {self.portfolio_item.title} - {self.portfolio_item.portfolio.artist}'
 
 class Rate(models.Model):
     artist = models.ForeignKey(Artist, on_delete=models.CASCADE, related_name='artist_rates', null=True, blank=True)
     artist_application = models.ForeignKey(ArtistApplication, on_delete=models.CASCADE, related_name='rates', null=True, blank=True)
     name = models.CharField(max_length=255)
     description = models.TextField(null=True, blank=True)
-    amount = models.PositiveIntegerField()
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
 
     def __str__(self):
         return f'{self.artist}-{self.name}-{self.amount}'
-
-# class DefaultTimeSlot(models.Model):
-#     artist = models.ForeignKey(Artist, on_delete=models.CASCADE, related_name='time_slots')
-#     start_time = models.TimeField()
-#     end_time = models.TimeField()
-
-#     def __str__(self):
-#         return f"{self.artist}: {self.start_time} - {self.end_time}"
-
-#     def clean(self):
-#         # Check for overlapping time slots
-#         if DefaultTimeSlot.objects.filter(
-#             artist=self.artist,
-#             start_time__lt=self.end_time,
-#             end_time__gt=self.start_time).exists():
-#             raise ValidationError("This time slot overlaps with an existing time slot.")
-
-#     def save(self, *args, **kwargs):
-#         # Call clean before saving to trigger validation
-#         self.clean()
-#         super().save(*args, **kwargs)
-
-#     class Meta:
-#         ordering = ['start_time']
-#         unique_together = ('artist', 'start_time', 'end_time')
-
-# class DefaultTimeSlotException(models.Model):
-#     time_slot = models.ForeignKey(DefaultTimeSlot, on_delete=models.CASCADE)
-#     date = models.DateField()
-
-#     class Meta:
-#         unique_together = ['time_slot','date']
-
-
-#     def __str__(self):
-#         return f'{self.date}==>{self.time_slot}'
-
-
-# #this will override default timeslot
-# class SpecialTimeSlot(models.Model):
-#     date = models.DateField()
-#     artist = models.ForeignKey(Artist, on_delete=models.CASCADE)
-#     start_time = models.TimeField()
-#     end_time=models.TimeField()
-
-#     def clean(self):
-#         # Check for overlapping time slots
-#         if SpecialTimeSlot.objects.filter(
-#             date = self.date,
-#             artist=self.artist,
-#             start_time__lt=self.end_time,
-#             end_time__gt=self.start_time).exists():
-#             raise ValidationError("This time slot overlaps with an existing time slot.")
-
-#     def save(self, *args, **kwargs):
-#         # Call clean before saving to trigger validation
-#         self.clean()
-#         super().save(*args, **kwargs)
-
-#     def __str__(self) -> str:
-#         return f'{self.date}-{self.artist}-{self.start_time}-{self.end_time}'
-
-#     class Meta:
-#         ordering = ['start_time']
-
-
-
-
-class UnavailableDate(models.Model):
-    artist = models.ForeignKey(Artist, on_delete=models.CASCADE)
-    date = models.DateField()
-
-    def __str__(self) -> str:
-        return f'{self.artist} - {self.date}'
-
 
 
 class ConnectionRequest(models.Model):

@@ -6,6 +6,7 @@ from django.urls import path, include
 from django.conf.urls.static import static
 
 urlpatterns = [
+    path('myadmin/',include('custom_admin.urls')),
     path('admin/', admin.site.urls),
     path('api/', include('djoser.urls')),
     path('api/', include('users.urls')),
@@ -15,7 +16,9 @@ urlpatterns = [
     path('api/payments/', include('payment.urls')),
     path('api/disputes/', include('dispute.urls')),
     path('api/notifications/', include('notification.urls')),
-
+    path('api/schedule/', include('schedule.urls')),
+    path('api/transactions/', include('transaction.urls')),
+    path('api/reviews/', include('review.urls')),
 ]
 
 if settings.DEBUG:

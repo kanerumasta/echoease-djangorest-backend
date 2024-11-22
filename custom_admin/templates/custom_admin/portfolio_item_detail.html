@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portfolio Item Details</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Global styles reused from previous design */
+        body { font-family: 'Poppins', sans-serif; background-color: #f8f9fa; color: #343a40; }
+        .navbar { background-color: #4093f2; }
+        .navbar-brand { font-weight: 600; color: #fff !important; }
+        footer { background-color: #4093f2; color: #fff; padding: 15px 0; }
+        footer p { margin: 0; font-weight: 500; }
+        .btn-primary { background-color: #4093f2; border: none; }
+        .btn-primary:hover { background-color: #2e72c8; }
+        .btn-danger { background-color: #dc3545; }
+        .btn-secondary { background-color: #6c757d; }
+        .modal-header { background-color: #dc3545; color: white; }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg py-3">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">Echoease Admin</a>
+            <a class="btn btn-light btn-sm ms-auto" href="{% url 'reported_portfolio_items' %}">Back to List</a>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <h1>Portfolio Item Details</h1>
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5>{{ portfolio_item.title }}</h5>
+            </div>
+            <div class="card-body">
+                <p><strong>Artist:</strong> {{ portfolio_item.portfolio.artist.user.first_name }} {{ portfolio_item.portfolio.artist.user.last_name }}</p>
+                <p><strong>Group:</strong> {{ portfolio_item.get_group_display }}</p>
+                <p><strong>Description:</strong> {{ portfolio_item.description|default:"No description provided" }}</p>
+            </div>
+        </div>
+
+        <!-- Associated Media Section -->
+        <div class="mt-4">
+            <h3>Associated Media</h3>
+            {% if portfolio_item.medias.all %}
+            <ul class="list-group">
+                {% for media in portfolio_item.medias.all %}
+                <li class="list-group-item p-3">
+                    <strong>Type:</strong> {{ media.get_media_type_display }} <br>
+                    <a href="{{ media.file.url }}" target="_blank" class="btn btn-primary btn-sm mt-2">View Media</a>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="text-muted">No media files available for this portfolio item.</p>
+            {% endif %}
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="mt-4">
+            <button class="btn btn-danger me-2" data-bs-toggle="modal" data-bs-target="#deleteModal">Delete</button>
+            <form action="{% url 'ignore_portfolio_item' portfolio_item.id %}" method="POST" style="display: inline;">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-secondary">Ignore</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="deleteModalLabel">Confirm Deletion</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    Are you sure you want to delete this portfolio item? This action cannot be undone.
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <form action="{% url 'delete_portfolio_item' portfolio_item.id %}" method="POST" style="display: inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger">Delete</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="text-center mt-4">
+        <p>&copy; 2024 Echoease. All rights reserved.</p>
+    </footer>
+</body>
+</html>

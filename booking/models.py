@@ -4,13 +4,15 @@ from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from decimal import Decimal
 from artists.models  import Rate
+from django.utils import timezone
+from datetime import datetime
 User = get_user_model()
 
 class Booking(models.Model):
-
-    artist = models.ForeignKey(Artist, on_delete=models.CASCADE, verbose_name='Echoee')
-    client = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True, verbose_name='Echoer')
-    amount = models.DecimalField(max_digits=10, decimal_places=2,null=True, blank=True)
+    booking_reference = models.CharField(max_length=15, blank=True, unique=True)
+    artist = models.ForeignKey(Artist, on_delete=models.CASCADE, verbose_name='Echoee', related_name='bookings')
+    client = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True, verbose_name='Echoer', related_name='bookings')
+    amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     event_name = models.CharField(max_length=100)
     event_date = models.DateField()
     start_time = models.TimeField()
@@ -24,23 +26,40 @@ class Booking(models.Model):
     barangay = models.CharField(max_length=255, null=True, blank=True)
     street = models.CharField(max_length=255, null=True, blank=True)
     landmark = models.CharField(max_length=255, null=True, blank=True)
-
-
-
-
+    venue = models.CharField(max_length=255, null=True, blank=True)
+    is_reviewed = models.BooleanField(default=False)
+    decline_reason = models.TextField(null=True, blank=True)
+    cancel_reason = models.TextField(null=True, blank=True)
+    latitude = models.FloatField(null=True, blank=True)
+    longitude = models.FloatField(null=True, blank=True)
+    cancelled_by = models.CharField(null=True, blank=True, choices=[
+        ('client','Client'),
+        ('artist','Artist')
+        ])
+    is_expired = models.BooleanField(default=False)
+    has_sent_payment_reminder = models.BooleanField(default=False)
     status_choices = [
     ('pending','Pending'),
     ('cancelled','Cancelled'),
     ('awaiting_downpayment','Wating for Downpayment'),
     ('rejected', 'Rejected'),
     ('approved', 'Approved'),
-    ('completed','Completed')
+    ('completed','Completed'),
+    ('expired','Expired'),
     ]
 
     status = models.CharField(max_length=20, choices=status_choices, default='pending')
 
+    @property
+    def is_event_due(self):
+        event_end_datetime = datetime.combine(self.event_date, self.end_time)
+        return datetime.now() > event_end_datetime
 
-    #approve here only sets statust to awaiting downpayment
+    def calculate_downpayment(self):
+        if self.amount is None:
+            return Decimal(0)
+        return Decimal(0.20) * self.amount #20% downpayment
+
     def approve(self):
         self.status = 'awaiting_downpayment'
         self.save()
@@ -53,13 +72,19 @@ class Booking(models.Model):
     def downpayment_paid(self):
         self.status = 'approved'
         #create timeslot exception for this time slot
-
-
-
         self.save()
 
-    def cancel(self):
+
+    def cancel(self, cancelled_by):
+        if cancelled_by not in ['client', 'artist']:
+            raise ValidationError("Invalid cancellation party. Must be 'client' or 'artist'.")
+
+        # Check if the booking can still be canceled
+        if self.is_completed:
+            raise ValidationError("You cannot cancel a completed booking.")
+
         self.status = 'cancelled'
+        self.cancelled_by = cancelled_by
         self.save()
 
     def complete(self):
@@ -107,10 +132,18 @@ class Booking(models.Model):
             raise ValidationError("Client user should not book it's own artist profile")
 
 
+
+
     def save(self, *args, **kwargs):
         self.clean()
         self.amount = self.rate.amount
         super().save(*args, **kwargs)
 
+
+
+    def __str__(self):
+        return f'{self.event_name} - {self.artist} - {self.client}'
+
     class Meta:
+        unique_together = ('artist', 'client', 'event_date', 'start_time','end_time')
         ordering = ['-created_at']

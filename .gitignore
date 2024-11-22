@@ -173,3 +173,44 @@ cython_debug/
 #.idea/
 
 # End of https://www.toptal.com/developers/gitignore/api/django
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Django migrations
+*/migrations/*.py
+!*/migrations/__init__.py
+
+# Node modules
+node_modules/
+
+# Logs
+*.log
+
+# Package lock files
+package-lock.json
+
+# Environment variables
+.env
+
+# Static files
+staticfiles/
+media/
+static/
+
+# Tailwind and other generated CSS
+static/css/
+tailwind.config.js
+
+# IDE and editor specific
+.vscode/
+.idea/
+
+# OS generated files
+.DS_Store
+Thumbs.db

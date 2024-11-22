@@ -1,14 +1,12 @@
 from rest_framework.serializers import ModelSerializer
-from .models import ClientDispute, ArtistDispute
+from .models import Dispute, DisputeEvidence
 
-
-class ClientDisputeSerializer(ModelSerializer):
+class DisputeSerializer(ModelSerializer):
     class Meta:
-        model = ClientDispute
+        model =  Dispute
         fields = '__all__'
 
-class ArtistDisputeSerializer(ModelSerializer):
+class DisputeEvidenceSerializer(ModelSerializer):
     class Meta:
-        model = ArtistDispute
+        model = DisputeEvidence
         fields = '__all__'
-

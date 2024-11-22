@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dispute Details</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Global Styles */
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f8f9fa;
+            color: #343a40;
+        }
+
+        .navbar {
+            background-color: #4093f2;
+        }
+
+        .navbar-brand, .btn-light {
+
+            font-weight: 600;
+        }
+        .navbar-brand {
+            color: #fff !important;
+        }
+
+
+        .btn-light {
+            color: #4093f2;
+            border: 1px solid #4093f2;
+        }
+
+        .btn-light:hover {
+            background-color: #e6f2ff;
+            border-color: #4093f2;
+        }
+
+        h1, h3 {
+            color: #4093f2;
+        }
+
+        .card {
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .card-header {
+            background-color: #4093f2;
+            color: white;
+            font-weight: 600;
+            border-radius: 12px 12px 0 0;
+        }
+
+        .btn-primary, .btn-success, .btn-danger, .btn-warning {
+            font-weight: 500;
+            border-radius: 8px;
+        }
+
+        .btn-primary {
+            background-color: #4093f2;
+            border-color: #4093f2;
+        }
+
+        .btn-primary:hover {
+            background-color: #3078cc;
+            border-color: #3078cc;
+        }
+
+        footer {
+            background-color: #4093f2;
+            color: #fff;
+            padding: 10px 0;
+        }
+
+        ul.list-group {
+            border-radius: 8px;
+        }
+
+        ul.list-group .list-group-item {
+            border: none;
+            border-bottom: 1px solid #ddd;
+        }
+
+        ul.list-group .list-group-item:last-child {
+            border-bottom: none;
+        }
+
+        /* Modal Styling */
+        .modal-content {
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .modal-header {
+            background-color: #4093f2;
+            color: white;
+            border-radius: 12px 12px 0 0;
+        }
+
+        .navbar {
+            background-color: var(--theme-color);
+        }
+
+        .navbar-brand {
+            color: #fff !important;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg py-3">
+        <div class="container-fluid">
+            <a class="navbar-brand fs-4" href="{% url 'admin-dashboard' %}">Echoease Admin</a>
+            <a class="btn btn-light btn-sm ms-auto" href="{% url 'disputes' %}">Back to Disputes</a>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container my-5">
+        <h1 class="mb-4">Dispute Details</h1>
+
+        <!-- Dispute Card -->
+        <div class="card">
+            <div class="card-header">
+                <strong>Dispute ID:</strong> {{ dispute.id }}
+            </div>
+            <div class="card-body">
+                <p><strong>Booking:</strong> {{ dispute.booking }}</p>
+
+                {% if downpayment %}
+                <p><strong>Downpayment Paid:</strong> PHP {{ downpayment.amount }}</p>
+                <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#refundModal" data-payment-id="{{ downpayment.id }}">
+                    Refund
+                </button>
+                {% else %}
+                <p class="text-muted">No downpayment available for refund.</p>
+                {% endif %}
+
+                <p><strong>Type:</strong> {{ dispute.get_dispute_type_display }}</p>
+                <p><strong>Status:</strong> {{ dispute.get_status_display }}</p>
+                <p><strong>Reason:</strong> {{ dispute.get_reason_display }}</p>
+                <p><strong>Description:</strong> {{ dispute.description }}</p>
+                <p><strong>Created At:</strong> {{ dispute.created_at|date:"M d, Y H:i" }}</p>
+                <p><strong>Updated At:</strong> {{ dispute.updated_at|date:"M d, Y H:i" }}</p>
+                {% if dispute.is_resolved %}
+                <p><strong>Resolved At:</strong> {{ dispute.date_resolved|date:"M d, Y H:i" }}</p>
+                {% endif %}
+                <p><strong>Notes:</strong> {{ dispute.notes|default:"No notes available." }}</p>
+            </div>
+        </div>
+
+        <!-- Evidence Section -->
+        <div class="mt-4">
+            <h3>Evidence</h3>
+            {% if dispute.evidences.all %}
+            <ul class="list-group">
+                {% for evidence in dispute.evidences.all %}
+                <li class="list-group-item">
+                    <strong>Media Type:</strong> {{ evidence.media_type }} <br>
+                    <strong>Description:</strong> {{ evidence.description|default:"No description provided." }} <br>
+                    {% if evidence.file %}
+                    <a href="{{ evidence.file.url }}" target="_blank" class="btn btn-primary btn-sm mt-2">View File</a>
+                    {% else %}
+                    <span class="text-muted">No file attached.</span>
+                    {% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="text-muted">No evidence attached for this dispute.</p>
+            {% endif %}
+        </div>
+
+        <!-- Actions Section -->
+        <div class="mt-4">
+            {% if not dispute.is_resolved %}
+            <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#markResolvedModal">Mark as Resolved</button>
+            <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#decreaseReputationModal">Decrease Reputation</button>
+            {% else %}
+            <p class="text-success">This dispute has already been resolved.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="text-center">
+        <p>&copy; 2024 Echoease. All rights reserved.</p>
+    </footer>
+    <!-- Mark as Resolved Modal -->
+    <div class="modal fade" id="markResolvedModal" tabindex="-1" aria-labelledby="markResolvedModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="markResolvedModalLabel">Enter Resolution</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form method="POST" action="{% url 'resolve_dispute' dispute.id %}">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="resolution" class="form-label">Resolution Details</label>
+                            <textarea class="form-control" id="resolution" name="resolution" rows="3" required></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-success">Resolve Dispute</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Refund Modal -->
+    <div class="modal fade" id="refundModal" tabindex="-1" aria-labelledby="refundModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="refundModalLabel">Refund Payment</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form method="POST" action="{% url 'refund_payment' dispute.id %}">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="refundAmount" class="form-label">Refund Amount (PHP)</label>
+                            <input type="number" class="form-control" id="refundAmount" name="amount" required min="0" step="0.01">
+                        </div>
+                        <div class="mb-3">
+                            <label for="refundReason" class="form-label">Reason</label>
+                            <textarea class="form-control" id="refundReason" name="reason" rows="3" required></textarea>
+                        </div>
+                        <input type="hidden" name="payment_id" value="{{ downpayment.id }}">
+                        <button type="submit" class="btn btn-primary">Submit Refund</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Decrease Reputation Modal -->
+    <div class="modal fade" id="decreaseReputationModal" tabindex="-1" aria-labelledby="decreaseReputationModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="decreaseReputationModalLabel">Decrease Reputation</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form method="POST" action="{% url 'decrease_reputation' dispute.id %}">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="points" class="form-label">Points to Decrease</label>
+                            <input type="number" class="form-control" id="points" name="points" required min="1" step="1">
+                        </div>
+                        <button type="submit" class="btn btn-warning">Decrease Reputation</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>
