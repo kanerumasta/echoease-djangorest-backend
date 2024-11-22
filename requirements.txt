@@ -79,5 +79,6 @@ vine==5.1.0
 wcwidth==0.2.13
 weasyprint==62.3
 webencodings==0.5.1
+xendit-python @ git+https://github.com/xendit/xendit-python.git@ec58a0d6bf9a6eb6c4d4200932a73094c76914b0
 zope.interface==6.4.post2
 zopfli==0.2.3.post1
