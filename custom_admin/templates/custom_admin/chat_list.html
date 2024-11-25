@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Support - Conversations</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Poppins', Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f7fc;
+        }
+          /* Navbar and Footer */
+          :root {
+            --theme-color: #4093f2;
+        }
+
+        .navbar {
+            background-color: var(--theme-color);
+        }
+
+        .navbar-brand {
+            color: #fff !important;
+        }
+
+        footer {
+            background-color: var(--theme-color);
+            color: #fff;
+        }
+
+        footer p {
+            margin: 0;
+            font-weight: 500;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 900px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: white;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+        }
+
+        h2 {
+            color: #333;
+            font-size: 24px;
+            font-weight: 600;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .conversation-list ul {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .conversation-list li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            border-bottom: 1px solid #ddd;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: background-color 0.3s ease;
+        }
+
+        .conversation-list li a {
+            text-decoration: none;
+            color: #333;
+            width: 100%;
+        }
+
+        .conversation-list li:hover {
+            background-color: #f1f1f1;
+        }
+
+        .conversation-list li .details {
+            flex-grow: 1;
+        }
+
+        .conversation-list li .details strong {
+            font-size: 16px;
+            font-weight: 600;
+            color: #007BFF; /* Main color from the conversation detail */
+        }
+
+        .conversation-list li .details p {
+            font-size: 14px;
+            color: #555;
+            margin: 5px 0;
+        }
+
+        .conversation-list li span {
+            font-size: 12px;
+            color: #888;
+        }
+
+        .conversation-list li.no-id {
+            background-color: #ffcccb;
+            color: #333;
+            font-style: italic;
+        }
+
+        .conversation-list li.no-id strong {
+            color: #d9534f;
+        }
+
+        .conversation-list li.no-id:hover {
+            background-color: #f8d7da;
+        }
+
+        /* Add Navbar styles */
+        nav.navbar {
+            background-color: #007BFF; /* Match the blue theme */
+            padding: 15px 20px;
+            color: white;
+        }
+
+        nav.navbar .navbar-brand {
+            color: white;
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        nav.navbar .btn-info {
+            background-color: #0056b3;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 20px;
+            color: white;
+            font-weight: 600;
+            text-decoration: none;
+            font-size: 14px;
+        }
+
+        nav.navbar .btn-info:hover {
+            background-color: #003d80;
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar navbar-expand-lg py-3">
+        <div class="container-fluid">
+            <a style="text-decoration: none;" class="navbar-brand fs-3" href="{% url 'admin-dashboard' %}">Echoease Admin</a>
+            <div>
+        </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h2>Chat Support Conversations</h2>
+
+        <div class="conversation-list">
+            {% if conversations %}
+            <ul>
+                {% for conversation in conversations %}
+                    {% if conversation.code %}
+                        <li>
+                            <a href="{% url 'chat_detail' conversation.code %}">
+                                <div class="details">
+                                    <strong>{{conversation.partner.first_name }} {{conversation.partner.last_name }}</strong>
+                                    <p>{{ conversation.last_message }}</p>
+                                </div>
+                                <span>{{ conversation.last_message_time }}</span>
+                            </a>
+                        </li>
+                    {% else %}
+                        <li class="no-id">
+                            <div>
+                                <strong>{{ conversation.client_name }}</strong> (No ID)
+                            </div>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+            </ul>
+            {% else %}
+                <p>No conversations available.</p>
+            {% endif %}
+        </div>
+    </div>
+
+
+
+</body>
+</html>

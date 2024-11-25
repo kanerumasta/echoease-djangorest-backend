@@ -14,8 +14,10 @@ from datetime import timedelta
 APPEND_SLASH = True
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+LOGIN_URL = '/admin/login/'
 
 dotenv_file = BASE_DIR / '.env.local'
+
 TIME_ZONE = 'Asia/Manila'
 USE_TZ = True
 
@@ -27,13 +29,12 @@ SECRET_KEY = getenv('DJANGO_SECRET_KEY', get_random_secret_key())
 
 DEBUG = getenv('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = getenv('DJANGO_ALLOWED_HOSTS','127.0.0.1').split(',')
+# ALLOWED_HOSTS = getenv('DJANGO_ALLOWED_HOSTS','127.0.0.1,8e6d-143-44-165-29.ngrok-free.app,192.168.1.242').split(',')
 
-# ALLOWED_HOSTS = ["192.168.1.242"]
+ALLOWED_HOSTS = ["*"]
 
 
 # Application definition
-
 INSTALLED_APPS = [
     'daphne',
     'jazzmin',
@@ -42,7 +43,9 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
-    'django.contrib.staticfiles', 
+    'django.contrib.staticfiles',
+    'django_celery_beat',
+
     # 'cloudinary',
     'corsheaders',
     'rest_framework',
@@ -56,7 +59,12 @@ INSTALLED_APPS = [
     'dispute',
     'notification',
     'schedule',
-    'transaction'
+    'transaction',
+    'review',
+    'logs',
+    'custom_admin',
+    #  'background_task',
+
 
 
 ]
@@ -96,10 +104,6 @@ ASGI_APPLICATION = 'core.asgi.application'
 
 #edit
 DATABASES = {
-    # 'default': {
-    #     'ENGINE': 'django.db.backends.sqlite3',
-    #     'NAME': BASE_DIR / 'db.sqlite3',
-    # }
     'default':{
         "ENGINE":"django.db.backends.postgresql_psycopg2",
         "NAME":'echoeasev3',
@@ -107,41 +111,32 @@ DATABASES = {
         'PASSWORD':'011456',
         'HOST':'127.0.0.1',
         'PORT':'5432'
-
     }
 }
 
 
 
-# AUTH_PASSWORD_VALIDATORS = [
-#     {
-#         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-#     },
-#     {
-#         'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-#     },
-#     {
-#         'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-#     },
-#     {
-#         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-#     },
-# ]
-
-
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+
 
 USE_I18N = True
 
 USE_TZ = True
 
 
+
+
 STATIC_URL = '/static/'
-STATIC_ROOT = BASE_DIR / 'static'
-MEDIA_URL = 'media/'
+
+MEDIA_URL = f'media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+STATICFILES_DIRS = [
+    BASE_DIR / "static",  # Add this if your static folder is at the project level
+]
+
+STATIC_ROOT = BASE_DIR / "staticfiles"
 
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(days=20),
@@ -178,7 +173,7 @@ DJOSER = {
     'SOCIAL_AUTH_ALLOWED_REDIRECT_URIS' : getenv('REDIRECT_URLS').split(',') # type: ignore
 }
 
-CORS_ALLOWED_ORIGINS = getenv('CORS_ALLOWED_ORIGINS', 'http://localhost:3000,http://127.0.0.1:3000, http://192.168.100.162:3000').split(',')
+CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
@@ -218,8 +213,10 @@ EMAIL_HOST_USER = getenv('DEFAULT_FROM_EMAIL')
 EMAIL_HOST_PASSWORD = getenv('EMAIL_HOST_PASSWORD')
 
 SITE_NAME = 'Echoease'
-DOMAIN = getenv('DOMAIN', 'localhost:3000')
+DOMAIN = getenv('DOMAIN')
 
+DISTANCE_MATRIX_API_URL = getenv('DISTANCE_MATRIX_API_URL')
+DISTANCE_MATRIX_API_KEY = getenv('DISTANCE_MATRIX_API_KEY')
 
 
 DEFAULT_FROM_EMAIL = getenv('DEFAULT_FROM_EMAIL')
@@ -249,6 +246,19 @@ CHANNEL_LAYERS = {
     },
 }
 
+CELERY_BROKER_URL = 'redis://127.0.0.1:6379/0'
+CELERY_BEAT_SCHEDULE = {
+
+    'send_payment_reminder':{
+        'task':'booking.tasks.send_payment_reminders',
+        'schedule':60.0
+    },
+    'expire_bookings':{
+        'task':'booking.tasks.expire_bookings',
+        'schedule':60.0
+    }
+}
+
 JAZZMIN_SETTINGS = {
     'site_title':'Echoease Admin',
     'site_header':'Echoease ',
@@ -257,3 +267,10 @@ JAZZMIN_SETTINGS = {
 }
 
 PAYMONGO_SECRET_KEY = getenv('PAYMONGO_SECRET_KEY')
+XENDIT_BASE_URL = "https://api.xendit.co"
+
+ENCRYPTION_KEY = getenv('ENCRYPTION_KEY')
+XENDIT_SECRET_KEY = 'xnd_development_BsLQOooqeYdmo65EObu2e2q6RDdzmEW9o5agFJiRIpHL6Mq9dJ2oKy6nFI2Ht'
+
+FACEBOOK_CLIENT_ID = getenv('FACEBOOK_CLIENT_ID')
+FACEBOOK_CLIENT_SECRET = getenv('FACEBOOK_CLIENT_SECRET')
