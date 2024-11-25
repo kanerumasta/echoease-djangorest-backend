@@ -8,6 +8,7 @@ from django.conf import settings
 class Notification(models.Model):
     notification_choices = [
         ('booking_rejected', 'Booking Rejected'),
+        ('booking_completed', 'Booking Completed'),
         ('booking_confirmation', 'Booking Confirmation'),
         ('new_booking', 'New Booking'),
         ('booking_cancelled', 'Booking Cancelled'),

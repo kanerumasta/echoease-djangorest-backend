@@ -3,7 +3,9 @@ from django.dispatch import receiver
 from .models import Booking
 from django.conf import settings
 import requests
+from notification.models import Notification
 from logs.models import TransactionLogs
+from notification.utils import notify_client_of_completed_booking, notify_artist_of_completed_booking
 
 @receiver(post_save, sender=Booking)
 def setLatLong(sender, instance, created, **kwargs):
@@ -27,6 +29,8 @@ def setLatLong(sender, instance, created, **kwargs):
         except Exception as e:
             print(f'Error fetching latitude and longitude: {str(e)}')
             return
+
+
 
 @receiver(post_save, sender = Booking)
 def generate_booking_reference(sender, instance, created, **kwargs):

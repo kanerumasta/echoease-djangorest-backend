@@ -18,7 +18,8 @@ from users.models import UserAccount
 
 class ConversationsView(APIView):
     def get(self, request):
-        conversations = Conversation.objects.filter(participants = request.user).exclude(messages__isnull=True).exclude(deleted_for = request.user).exclude(blocked_users__isnull=False)
+        chat_support_admin = UserAccount.objects.filter(is_chat_support = True)
+        conversations = Conversation.objects.filter(participants = request.user).exclude(messages__isnull=True).exclude(deleted_for = request.user).exclude(blocked_users__isnull=False).exclude(participants__in=chat_support_admin)
         serializer = ConversationSerializer(conversations, many=True, context={'request':request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 

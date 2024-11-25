@@ -42,7 +42,7 @@ from .serializers import (
 from .models import Artist, PortfolioItem, Portfolio, Rate
 
 class ArtistPagination(pagination.PageNumberPagination):
-    page_size = 4
+    page_size = 8
     max_page_size=20
     page_size_query_param = 'page_size'
     page_query_param = 'page'
@@ -119,7 +119,8 @@ class ArtistView(APIView):
                 user__is_suspended=False,
                 user__is_deactivated=False
             ).annotate(
-                total_bookings=Count('bookings__reviews'),
+                total_reviews=Count('bookings__reviews'),
+                total_bookings=Count('bookings'),
                 average_rating=Avg('bookings__reviews__rating'),
                 genre_count=Count('genres'),
             )
@@ -137,11 +138,9 @@ class ArtistView(APIView):
 
             if category:
                 if category == 'new':
-                    # For "new", filter artists with no bookings and order by created_at descending (newest first)
-                    artist_list = artist_list.filter(total_bookings=0).order_by('-created_at')
-
+                     # For "new", filter artists with no bookings, order randomly, and limit to 10
+                    artist_list = artist_list.filter(total_bookings=0).order_by('?')[:10]
                 else:
-                    # Apply your default sorting logic for other categories
                     artist_list = artist_list.annotate(
                         reputation_priority=Case(
                             When(user__reputation_score__gte=85, then=0),
@@ -150,7 +149,7 @@ class ArtistView(APIView):
                         )
                     ).order_by(
                         '-user__reputation_score',     # Users with a higher reputation score first
-                        '-total_bookings',             # Artists with more bookings first
+                        '-total_reviews',             # Artists with more bookings first
                         '-average_rating',             # Higher ratings first
                         'reputation_priority'         # Ensure high-reputation artists come before others if the score is 85 or more
                     )
@@ -159,10 +158,10 @@ class ArtistView(APIView):
                     artist_list = artist_list.filter(
                         created_at__lte=timezone.now() - timezone.timedelta(days=3)
                     ).filter(
-                        total_bookings__gte=5,
+                        total_reviews__gte=5,
                         average_rating__gte=4.0,
                         user__reputation_score__gte=85
-                    ).order_by('-total_bookings', '-average_rating', '-user__reputation_score')
+                    ).order_by('-total_reviews', '-average_rating', '-user__reputation_score')
 
                 elif category == 'versatile':
                     artist_list = artist_list.filter(genre_count__gte=3).order_by('-genre_count')
@@ -210,7 +209,7 @@ class ArtistView(APIView):
     #         category = request.GET.get('category', None)
 
     #         artist_list = Artist.objects.filter(user__is_suspended=False, user__is_deactivated=False).annotate(
-    #                     total_bookings = Count('bookings__reviews'),
+    #                     total_reviews = Count('bookings__reviews'),
     #                     average_rating = Avg('bookings__reviews__rating'),
     #                     genre_count=Count('genres'),
     #                 )
@@ -521,9 +520,9 @@ class ConnectionRequestView(APIView):
                     con_request = serializer.save()
                     try:
                         Notification.objects.create(
-                            user = con_request.sender.user,
+                            user = con_request.receiver.user,
                             notification_type = 'connection_request_accepted',
-                            title = f'{con_request.sender.user.first_name} {con_request.sender.user.last_name} has accepted your connection request',
+                            title = f'{con_request.sender.user.first_name} {con_request.sender.user.last_name} has sent you a connection request',
                             description = f'Click here to view and manage your connections',
                         )
                     except Exception as e:
@@ -550,7 +549,7 @@ class ConnectionRequestView(APIView):
                     Notification.objects.create(
                         user = connection_request.sender.user,
                         notification_type = 'connection_request_accepted',
-                        title = f'{connection_request.sender.user.first_name} {connection_request.sender.user.last_name} has accepted your connection request',
+                        title = f'{connection_request.receiver.user.first_name} {connection_request.receiver.user.last_name} has accepted your connection request',
                         description = f'Click here to view and manage your connections',
                     )
                 except Exception as e:

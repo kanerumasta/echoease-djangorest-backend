@@ -5,7 +5,7 @@ from artists.serializers import ArtistSerializer
 from dispute.serializers import DisputeSerializer
 from payment.models import Payment
 from artists.models import Artist, Rate
-
+from review.serializers import ReviewsSerializer
 
 
 class RateSerializer(serializers.ModelSerializer):
@@ -27,6 +27,7 @@ class BookingSerializer(serializers.ModelSerializer):
     )
     artist_details = ArtistSerializer(source='artist', read_only=True)
     rate_details = RateSerializer(source='rate', read_only=True)
+    reviews = ReviewsSerializer(read_only=True, many=True)
     # service_fee = serializers.SerializerMethodField()
     downpayment_amount = serializers.SerializerMethodField()
     is_event_due = serializers.BooleanField(read_only=True)
@@ -51,5 +52,7 @@ class BookingSerializer(serializers.ModelSerializer):
         representation['timeslot'] = f'{instance.start_time.strftime('%I:%M %p')} - {instance.end_time.strftime('%I:%M %p')}'
         representation['artist'] = representation.pop('artist_details')
         representation['rate'] = representation.pop('rate_details')
+        if representation['reviews']:
+            representation['reviews'] = representation['reviews'][0]
         representation['location'] = f'{instance.street}, {instance.barangay}, {instance.municipality}, {instance.province}, Philippines @{instance.landmark}'
         return representation

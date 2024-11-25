@@ -3,6 +3,7 @@ import uuid
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.conf import settings
+from django.utils import timezone
 
 User = settings.AUTH_USER_MODEL
 
@@ -22,7 +23,7 @@ class Conversation(models.Model):
     def last_message_time(self):
         last_msg = self.messages.order_by('-created_at').first()
         if last_msg:
-            return last_msg.created_at.strftime('%I:%M %p')  # 10:20 AM format
+            return timezone.localtime(last_msg.created_at).strftime('%I:%M %p')  # 10:20 AM format
         return ""
 
 class Message(models.Model):

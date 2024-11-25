@@ -17,6 +17,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 LOGIN_URL = '/admin/login/'
 
 dotenv_file = BASE_DIR / '.env.local'
+
 TIME_ZONE = 'Asia/Manila'
 USE_TZ = True
 
@@ -117,7 +118,7 @@ DATABASES = {
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+
 
 USE_I18N = True
 
