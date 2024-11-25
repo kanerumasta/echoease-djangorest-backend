@@ -13,9 +13,8 @@ class TransactionSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         representation =  super().to_representation(instance)
-        representation['formatted_created_at'] = instance.created_at and instance.created_at.strftime('%b %d, %Y %I:%M %p')
+        representation['formatted_created_at'] = instance.created_at and localtime(instance.created_at).strftime('%b %d, %Y %I:%M %p')
         representation['formatted_date'] = instance.created_at and instance.created_at.strftime('%b %d, %Y')
         representation['formatted_time'] = instance.created_at and localtime(instance.created_at).strftime('%I:%M %p')
         representation['transaction'] = instance.get_transaction_type_display()
         return representation
-        

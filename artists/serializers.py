@@ -41,6 +41,7 @@ class RateSerializer (serializers.ModelSerializer):
 
 class ArtistSerializer(serializers.ModelSerializer):
     user = UserProfileSerializer(read_only=True)
+    is_available = serializers.SerializerMethodField()
     artist_rates = RateSerializer(read_only=True, many=True)
     genres = GenreSerializer(many=True)
     portfolio = serializers.PrimaryKeyRelatedField(read_only=True)
@@ -51,6 +52,10 @@ class ArtistSerializer(serializers.ModelSerializer):
 
     def get_is_new(self, obj):
         return obj.created_at >=  timezone.now() - timezone.timedelta(days=1)
+
+    def get_is_available(self, obj):
+        has_sched = obj.availabilities.exists() or obj.recurring_availabilities.exists()
+        return has_sched
 
 
     def to_representation(self, instance):

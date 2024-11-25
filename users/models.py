@@ -83,6 +83,7 @@ class UserAccount(AbstractBaseUser, PermissionsMixin):
 
     #for individual // all
     government_id = models.ImageField(upload_to="images/", null=True, blank=True)
+    government_id_back = models.ImageField(upload_to="images/", null=True, blank=True)
     government_id_type = models.CharField(max_length=255, null=True, blank=True)
 
     reputation_score = models.IntegerField(default = 100)

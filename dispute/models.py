@@ -29,7 +29,10 @@ class Dispute(models.Model):
         ('cancellation','Cancellation'),
         ('no_show','No Show'),
         ('miscommunication','Miscommunication'),
+        ('delayed_payment','Delayed Payment'),
+        ('accomodation','Accomodation'),
         ('other','Other'),
+
     ])
     status = models.CharField(choices=DISPUTE_STATUS, default='under_review')
     created_at = models.DateTimeField(auto_now_add=True)

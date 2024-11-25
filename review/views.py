@@ -32,6 +32,7 @@ class ReviewsView(APIView):
     def post(self, request, *args, **kwargs):
         serializer = ReviewsSerializer(data = request.data)
         booking = get_object_or_404(Booking, pk = request.data.get('booking'))
+        print(request.data)
         if serializer.is_valid():
             serializer.save()
             booking.is_reviewed = True

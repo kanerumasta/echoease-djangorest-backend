@@ -2,6 +2,8 @@ from rest_framework import serializers
 from .models import Conversation, Message
 from django.conf import settings
 from users.serializers import UserAccountSerializer
+from django.utils import timezone
+from datetime import datetime
 
 User = settings.AUTH_USER_MODEL
 
@@ -32,6 +34,7 @@ class ConversationSerializer(serializers.ModelSerializer):
 
     def get_last_message(self, obj):
         return obj.last_message
+
 
     def get_last_message_time(self, obj):
         return obj.last_message_time

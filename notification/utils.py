@@ -92,6 +92,38 @@ def notify_client_of_cancelled_booking(user, booking):
             'booking_type':'cancelled_booking'
         }
     )
+def notify_client_of_completed_booking(client,booking):
+    channel_layer = get_channel_layer()
+    group_name = f"user_{client.id}"
+    # Send message to artist's WebSocket group
+    async_to_sync(channel_layer.group_send)( # type: ignore
+        group_name,
+        {
+            'type': 'booking_notification',  # This should match the function name in ArtistConsumer
+            'booking': {
+                'id': booking.id,
+                'artist': f'{booking.artist.user.first_name} {booking.artist.user.last_name}',
+                'event_date': str(booking.event_date)
+            },
+            'booking_type':'booking_completed'
+        }
+    )
+def notify_artist_of_completed_booking(artist,booking):
+    channel_layer = get_channel_layer()
+    group_name = f"user_{artist.user.id}"
+    # Send message to artist's WebSocket group
+    async_to_sync(channel_layer.group_send)( # type: ignore
+        group_name,
+        {
+            'type': 'booking_notification',  # This should match the function name in ArtistConsumer
+            'booking': {
+                'id': booking.id,
+                'artist': f'{booking.artist.user.first_name} {booking.artist.user.last_name}',
+                'event_date': str(booking.event_date)
+            },
+            'booking_type':'booking_completed'
+        }
+    )
 
 def notify_client_of_rejected_booking(user,booking):
     channel_layer = get_channel_layer()

@@ -1,3 +1,5 @@
+{% load tz %}
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -164,7 +166,7 @@
                     <tbody>
                         {% for transaction in transactions %}
                         <tr>
-                            <td>{{ transaction.created_at|date:"F j, Y, g:i a" }}</td>
+                            <td>{% localtime on %}{{ transaction.created_at|date:"F j, Y, g:i a" }}{% endlocaltime %}</td>
                             <td>{{ transaction.transaction_reference }}</td>
                             <td>{{ transaction.payment.booking.artist.user.first_name }} {{ transaction.payment.booking.artist.user.last_name }}</td>
                             <td>{{ transaction.payment.booking.client.first_name }} {{ transaction.payment.booking.client.last_name }}</td>

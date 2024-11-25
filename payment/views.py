@@ -22,6 +22,7 @@ from django.views.decorators.http import require_POST
 import json
 from transaction.models import Transaction
 from django.http import JsonResponse
+from notification.utils import notify_artist_of_completed_booking, notify_client_of_completed_booking
 from dispute.models import Dispute
 
 USER = settings.AUTH_USER_MODEL
@@ -242,6 +243,25 @@ def payout_webhook(request):
                     payment.payment_reference  = f'PAY{payment.pk:06d}'
                     payment.save()
                     booking.complete()
+                    notify_client_of_completed_booking(booking.client, booking)
+                    notify_artist_of_completed_booking(booking.artist, booking)
+
+                    client_fullname = f"{booking.client.first_name} {booking.client.last_name}"
+                    artist_fullname = f"{booking.artist.user.first_name} {booking.artist.user.last_name}"          #create client notifications
+
+                    Notification.objects.create(
+                    user = booking.client,
+                    notification_type = "booking_completed",
+                    title = "Booking Event Completed!",
+                    description = f"""Dear {client_fullname},
+
+                    Thank you for being part of {booking.event_name}! We're happy to inform you that your booking has been successfully completed. We hope you had a fanstastic experience!
+
+""",
+                    booking = booking,
+                )
+
+
                 except Exception as e:
                     print(e)
                     return JsonResponse({'message':'Error'}, status=400)
@@ -274,6 +294,18 @@ def payout_webhook(request):
                             booking=booking
                         )
                 notify_artist_of_paid_final_payment(artist=booking.artist.user, booking=booking)
+                Notification.objects.create(
+                    user = booking.artist.user,
+                    notification_type = "booking_completed",
+                    title = "Booking Event Completed!",
+                    description = f"""Dear {artist_fullname},
+
+                    Thank you for attending {booking.event_name}! We are pleased to confirm that your booking has been successfully completed.
+
+                    We hope you had an enjoyable time and that the event met your expectations.
+""",
+                    booking = booking
+                )
             return JsonResponse({"status": "success"}, status=200)
         else:
             return JsonResponse({'message':'Error'}, status=400)
