@@ -1,68 +1,51 @@
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from .models import Payment
+from .models import Payment, Refund
 from transaction.models import Transaction
+from logs.models import TransactionLogs
+
+
+from booking.models import Booking
 
 
 @receiver(post_save, sender=Payment)
 def create_payment_transaction(sender, instance, created, **kwargs):
     if created:
         transaction_type = instance.payment_type
-        print('Payment transaction type',transaction_type)
-
+        if transaction_type == 'payout':
+            user = instance.booking.artist.user
+        else:
+            user  = instance.booking.client
         try:
-            # Handling different types of payments
-            if transaction_type == 'downpayment':
-                # Logic for downpayment
-                transaction = Transaction.objects.create(
-                    transaction_type=transaction_type,
-                    status='completed',
-                    booking=instance.booking,
-                    client=instance.booking.client,
-                    amount=instance.amount,
-                    service_fee=instance.service_fee,  # May or may not include a service fee
-                    payment_gateway=instance.payment_gateway,
-                    payment_intent_id=instance.payment_intent_id,
-                    payer_email=instance.payer_email,
-                    payer_name=instance.payer_name,
-                    net_amount=instance.net_amount  # Adjust according to downpayment logic
-                )
-
-            elif transaction_type == 'full_payment':
-                # Logic for full payment
-                transaction = Transaction.objects.create(
-                    transaction_type=transaction_type,
-                    status='completed',
-                    booking=instance.booking,
-                    client=instance.booking.client,
-                    amount=instance.amount,
-                    service_fee=instance.service_fee,  # Full payment may include different fees
-                    payment_gateway=instance.payment_gateway,
-                    payment_intent_id=instance.payment_intent_id,
-                    payer_email=instance.payer_email,
-                    payer_name=instance.payer_name,
-                    net_amount=instance.net_amount
-                )
-
-            elif transaction_type == 'refund':
-                # Logic for refund
-                refund_amount = -abs(instance.amount)  # Refund is usually a negative amount
-                transaction = Transaction.objects.create(
-                    transaction_type=transaction_type,
-                    status='completed',
-                    booking=instance.booking,
-                    client=instance.booking.client,
-                    amount=refund_amount,  # Negative amount for refund
-                    service_fee=0,  # Refunds usually don't have a service fee
-                    payment_gateway=instance.payment_gateway,
-                    payment_intent_id=instance.payment_intent_id,
-                    payer_email=instance.payer_email,
-                    payer_name=instance.payer_name,
-                    net_amount=refund_amount
-                )
-
-            # Save the transaction
-            transaction.save()
-
+            Transaction.objects.create(
+                payment=instance,
+                transaction_type=transaction_type,
+                booking=instance.booking,
+                amount=instance.amount,
+                user = user
+            )
+            print(f'Created transaction for booking {instance.booking.id}')
         except Exception as e:
             print(f'Error creating transaction in signals: {e}')
+
+@receiver(post_save, sender=Payment)
+def log_payment(sender, instance, created, **kwargs):
+    if created:
+        try:
+            TransactionLogs.objects.create(
+                transaction_type = "PAYMENT",
+                message=f'{instance.payment_type} received for booking {instance.booking.id}'
+            )
+        except Exception as e:
+            print(f'Error logging payment in signals: {e}')
+
+@receiver(post_save, sender=Refund)
+def log_transaction(sender, instance, created, **kwargs):
+    if created:
+        try:
+            TransactionLogs.objects.create(
+                transaction_type = 'REFUND',
+                message=f'Refund initiated for payment {instance.payment.id}'
+            )
+        except Exception as e:
+            print(f'Error logging refund in signals: {e}')

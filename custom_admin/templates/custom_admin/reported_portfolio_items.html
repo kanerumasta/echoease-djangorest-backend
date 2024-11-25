@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reported Portfolio Items</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Global Styles */
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f8f9fa;
+            color: #343a40;
+        }
+
+        /* Navbar */
+        .navbar {
+            background-color: #4093f2; /* Matches dashboard theme */
+        }
+
+        .navbar-brand {
+            font-weight: 600;
+            font-size: 1.5rem;
+            color: #fff !important;
+        }
+
+        .btn-light {
+            color: #343a40;
+            background-color: #fff;
+            border: none;
+        }
+
+        .btn-light:hover {
+            color: #fff;
+            background-color: #343a40;
+        }
+
+        /* Footer */
+        footer {
+            background-color: #4093f2; /* Matches dashboard theme */
+            color: #fff;
+            padding: 15px 0;
+        }
+
+        footer p {
+            margin: 0;
+            font-weight: 500;
+        }
+
+        /* List and Buttons */
+        .list-group-item {
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .list-group-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-primary {
+            background-color: #4093f2;
+            border: none;
+        }
+
+        .btn-primary:hover {
+            background-color: #2e72c8;
+        }
+
+        h1 {
+            font-weight: 600;
+            text-align: center;
+            margin-bottom: 30px;
+            color: #343a40;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg py-3">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">Echoease Admin</a>
+            <a class="btn btn-light btn-sm ms-auto" href="{% url 'admin-dashboard' %}">Dashboard</a>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container mt-4">
+        <h1>Reported Portfolio Items</h1>
+        {% if reported_items %}
+        <div class="mt-4">
+            {% for item in reported_items %}
+            <div class="list-group-item p-4">
+                <h5 class="mb-2">{{ item.title }}</h5>
+                <p><strong>Artist:</strong> {{ item.portfolio.artist.user.first_name }} {{ item.portfolio.artist.user.last_name }}</p>
+                <p><strong>Description:</strong> {{ item.description|default:"No description provided" }}</p>
+                <p><strong>Group:</strong> {{ item.get_group_display }}</p>
+                <a href="{% url 'reported_portfolio_item_detail' item.id %}" class="btn btn-primary btn-sm">View Details</a>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-muted text-center mt-4">No reported portfolio items found.</p>
+        {% endif %}
+    </div>
+
+    <!-- Footer -->
+    <footer class="text-center">
+        <p>&copy; 2024 Echoease. All rights reserved.</p>
+    </footer>
+</body>
+</html>

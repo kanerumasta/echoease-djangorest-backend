@@ -4,834 +4,395 @@ from django.shortcuts import render
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .utils import create_paypal_order,capture_payment, create_paymongo_payment_link
 from django.shortcuts import get_object_or_404
 from booking.models import Booking
 from django.http import Http404
-from payment.models import Payment
+from payment.models import Payment, Refund
 from decimal import Decimal, InvalidOperation
 from django.conf import settings
+from pprint import pprint
 import base64
 import requests
-from notification.utils import notify_artist_of_paid_downpayment
+from notification.utils import notify_artist_of_paid_downpayment,notify_artist_of_paid_final_payment, notify_refunded_payment
+from notification.models import Notification
 from django.conf import settings
+from .utils import send_payout, create_payment_invoice, get_invoice_details, is_valid_payment_type, refund_payment
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
+import json
+from transaction.models import Transaction
+from django.http import JsonResponse
+from notification.utils import notify_artist_of_completed_booking, notify_client_of_completed_booking
+from dispute.models import Dispute
 
 USER = settings.AUTH_USER_MODEL
 
-
-class DownPaymentStatusView(APIView):
+class CreateInvoiceView(APIView):
     def post(self, request):
-        payment_intent_id = request.data.get("payment_intent_id")
-        if not payment_intent_id:
-            return Response({'error':'payment_intent_id is required'},status=status.HTTP_400_BAD_REQUEST)
+        booking_id = request.data.get('booking_id')
+        payment_type = request.data.get('payment_type')
+        redirect_url = request.data.get('redirect_url')
+        valid_payment_type = is_valid_payment_type(payment_type)
+        if not valid_payment_type:
+             return Response({'message':'Not a valid payment type'},status=status.HTTP_400_BAD_REQUEST)
+        if not booking_id or not payment_type or not redirect_url:
+            return Response({'message':'Missing booking_id and payment_type'},status=status.HTTP_400_BAD_REQUEST)
+        booking = get_object_or_404(Booking, id=booking_id)
+        if booking.amount is not None:
+            if payment_type == 'downpayment':
+                has_downpayment = Payment.objects.filter(payment_type='downpayment',booking=booking).exists()
+                if has_downpayment:
+                    return Response({'message':'Downpayment already exists'},status=status.HTTP_400_BAD_REQUEST)
+                amount = booking.amount * Decimal(0.20)
+            if payment_type == 'final_payment':
+                downpayment = Payment.objects.filter(booking = booking, payment_type = 'downpayment').first()
+                if not downpayment:
+                    return Response({'message':'No downpayment found'},status=status.HTTP_400_BAD_REQUEST)
+                has_final_payment = Payment.objects.filter(payment_type='final_payment',booking=booking)
+                if has_final_payment:
+                    return Response({'message':'Final payment already exists'},status=status.HTTP_400_BAD_REQUEST)
+                amount = booking.amount - downpayment.amount
 
-        # PayMongo API request to retrieve the payment intent status
-        url = f"https://api.paymongo.com/v1/payment_intents/{payment_intent_id}"
-        auth_key = base64.b64encode(f'{settings.PAYMONGO_SECRET_KEY}:'.encode('utf-8')).decode('utf-8')
-        headers = {
-            "Authorization": f"Basic {auth_key}",
-            "Content-Type": "application/json",
-        }
-
-        response = requests.get(url, headers=headers)
-
-        if response.status_code == 200:
-            payment_intent = response.json()
-            intent_status = payment_intent['data']['attributes']['status']
-
-            # Getting booking id reference
-            booking_id = payment_intent['data']['attributes']['metadata']['booking_id']
-            booking = get_object_or_404(Booking, id= booking_id)
-
-            existing_downpayment = Payment.objects.filter(booking=booking, payment_type = 'downpayment').exists()
-
-
-            if not existing_downpayment:
-            # No existing downpayment, create a new one
-                payment_data = payment_intent['data']['attributes']['payments'][0]['attributes']
-                fee = payment_data['fee']
-                net_amount = payment_data['net_amount']
-                gross_amount = payment_data['amount']
-                email = payment_data['billing']['email']
-                name = payment_data['billing']['name']
-                payment_status = payment_data['status']
-                payment_method_type = payment_data['source']['type']
-
-                # Convert amounts
-                gateway_fee = Decimal(fee) / Decimal(100)
-                net_amount = Decimal(net_amount)/ Decimal(100)
-                gross_amount = Decimal(gross_amount) / Decimal(100)
-
-                # Create new downpayment instance
-                downpayment = Payment.objects.create(
-                    payment_type = 'downpayment',
-                    booking=booking,
-                    client = booking.client,
-                    payment_intent_id=payment_intent['data']['id'],
-                    amount=gross_amount,
-                    service_fee=gateway_fee,
-                    payment_gateway = payment_method_type,
-                    net_amount=net_amount,
-                    payment_status='paid',
-                    payer_email=email,
-                    payer_name=name
+            invoice_url = create_payment_invoice(
+                reference_id=booking.booking_reference,
+                amount= float(amount),
+                customer_email=booking.client.email,
+                payment_type=payment_type,
+                redirect_url=redirect_url
                 )
-                print("Downpayment created successfully.")
-                #update booking status
-                booking.downpayment_paid()
-                notify_artist_of_paid_downpayment(artist=booking.artist.user, booking=booking)
+            if invoice_url is not None:
+                return Response({"invoice_url": invoice_url}, status=status.HTTP_200_OK)
+        return Response({'message':'ERROR creating invoice'},status=status.HTTP_400_BAD_REQUEST)
+import json
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
+from django.shortcuts import get_object_or_404
 
-            else:
-                # Downpayment already exists, take no action
-                print("Downpayment already exists for this booking.")
-            if intent_status == 'succeeded':
-                return Response({"status": "success", "booking_id":booking.id}, status=status.HTTP_200_OK)
-            elif intent_status == 'awaiting_payment_method':
-                return Response({"status": "pending"}, status=status.HTTP_200_OK)
-            elif intent_status == 'awaiting_next_action':
-                return Response({"status": "pending_redirect"}, status=status.HTTP_200_OK)
-            else:
-                return Response({"status": "failed"}, status=status.HTTP_400_BAD_REQUEST)
+@csrf_exempt
+@require_POST
+def invoice_webhook(request):
+    # Gcash 2.3%
+    # Grabpay 2.0%
+    # Maya 1.8%
+
+
+    try:
+        # Parse the JSON payload
+        data = json.loads(request.body)
+        pprint(data)
+        print("Webhook received:", data)
+
+        # Extract relevant fields from the webhook data
+        invoice_id = data.get("id")
+        booking_reference = data.get("external_id")
+        status = data.get("status")
+        amount = data.get("amount")
+        payer_email = data.get("payer_email")
+        payment_method = data.get("payment_method")
+        payment_channel = data.get("payment_channel")
+
+
+
+        # Validate required fields
+        if not all([invoice_id, booking_reference, status, amount]):
+            return JsonResponse({"error": "Missing required fields"}, status=400)
+        # Retrieve the booking object, return 404 if not found
+        try:
+            booking = Booking.objects.get(booking_reference=booking_reference)
+        except Booking.DoesNotExist:
+            print(f"Booking not found for booking_reference: {booking_reference}")
+            return JsonResponse({"error": "Booking not found"}, status=404)
+
+        # Retrieve the invoice details from Xendit (make sure to handle this gracefully)
+        invoice_details = get_invoice_details(invoice_id=invoice_id)
+        if invoice_details is None:
+            print(f"Invoice details not found for invoice_id: {invoice_id}")
+            return JsonResponse({"error": "Invoice details not found"}, status=404)
+
+        # Extract metadata if available
+        metadata = invoice_details.get("metadata", {})
+        if not metadata:
+            print(f"No metadata found for invoice_id: {invoice_id}")
+
+        #calculate processing fee base on xendit
+            # Gcash 2.3%
+    # Grabpay 2.0%
+    # Maya 1.8%
+        if payment_channel == 'GCASH':
+            processing_fee = Decimal(amount) * Decimal(0.023) #final_payment processing fee
+        elif payment_channel == 'GRABPAY':
+            processing_fee = Decimal(amount) * Decimal(0.02)
+        elif payment_channel == 'PAYMAYA':
+            processing_fee = Decimal(amount) * Decimal(0.018)
         else:
-            return Response(response.json(), status=response.status_code)
+            processing_fee = Decimal(0)
 
-class CreateDownPaymentIntentView(APIView):
-    def post(self, request):
-        currency = request.data.get('currency', 'PHP')
-        booking_id = request.data.get('booking')
-        booking = get_object_or_404(Booking, id=booking_id)
+        # Process payment if the status is 'PAID' and metadata is present
+        if status == "PAID" and metadata:
+            payment_type = metadata.get('payment_type')
+            if payment_type:
+                    # Create payment entry in the database
+                payment = Payment.objects.create(
+                    user = booking.client,
+                    payment_status='paid',
+                    booking=booking,
+                    payment_id = invoice_id,
+                    amount=amount,
+                    net_amount=amount-processing_fee,
+                    payment_method=payment_method,
+                    processing_fee = processing_fee,
+                    payer_channel=payment_channel,
+                    payer_email=payer_email,
+                    payment_type=payment_type,
+                    title=f'{'final_payment' if payment_type == 'final payment' else payment_type} for Booking {booking.artist.user.first_name} {booking.artist.user.last_name}'
+                )
+                payment.payment_reference  = f'PAY{payment.pk:06d}'
+                payment.save()
+                booking.status = 'approved'
+                booking.save()
+                if payment_type == 'downpayment':
+                    try:
+                        notification = Notification.objects.create(
+                            notification_type = 'downpayment_paid',
+                            user = booking.artist.user,
+                            title="Downpayment Received! Your Event is Ready!",
+                            description=f"Great news! Echoer {booking.client.first_name.title()} {booking.client.last_name.title()} has successfully paid the downpayment for your confirmed booking . Your event is now all set and ready to go. We’re excited for the big day!",  # type: ignore
+                            booking=booking
+                        )
+                        notify_artist_of_paid_downpayment(artist=booking.artist.user, booking=booking)
+                    except Exception as e:
+                        print("failed create notification")
+                #Send Dibursement if final payment
+                if payment_type == 'final_payment' and booking.amount is not None:
+                    booking.status='completed'
+                    booking.save()
+                    echoease_fee =  booking.amount * Decimal('0.05')
 
-        # Calculate downpayment amount (20% of the rate)
 
-        downpayment_amount = booking.calculate_downpayment().quantize(Decimal('0.01'))
-        # Log downpayment amount for debugging
-        print('Downpayment Amount:', downpayment_amount)
 
-        # Convert downpayment to integer cents
-        amount_in_cents = int(downpayment_amount * 100)
-        print('Amount in Cents:', amount_in_cents)
+                    # Get the downpayment
+                    downpayment = Payment.objects.filter(payment_type="downpayment",booking=booking).first()
+                    if downpayment:
+                        payout_amount = (downpayment.net_amount + payment.net_amount) - (echoease_fee)
 
-        # Prepare PayMongo API request
-        url = 'https://api.paymongo.com/v1/payment_intents'
-        secret_key = settings.PAYMONGO_SECRET_KEY
-        auth_key = base64.b64encode(f'{secret_key}:'.encode('utf-8')).decode('utf-8')
-        headers = {
-            'Authorization': f'Basic {auth_key}',
-            'Content-Type': 'application/json'
-        }
-
-        payload = {
-            'data': {
-                'attributes': {
-                    'amount': amount_in_cents,
-                    'payment_method_allowed': ['gcash', 'paymaya'],
-                    'currency': currency,
-                    'description': f'Booking down payment for {booking.artist.user.first_name} {booking.artist.user.last_name}',
-                    'metadata': {
-                        'booking_id':str(booking.id)
-                    }
-                }
-            }
-        }
-
-        # Make the API request to PayMongo
-        response = requests.post(url=url, json=payload, headers=headers)
-
-        # Check the response status and handle accordingly
-        if response.status_code == 200:
-            payment_intent_data = response.json()
-            payment_intent_id = payment_intent_data['data']['id']
-            return Response({"payment_intent_id": payment_intent_id}, status=status.HTTP_200_OK)
-
-        # Handle errors from PayMongo
-        return Response(response.json(), status=response.status_code)
-
-class AttachPaymentMethodView(APIView):
-    def post(self, request):
-        payment_intent_id = request.data.get("payment_intent_id")
-        payment_method = request.data.get("payment_method")
-        return_url = request.data.get("return_url")
-
-        if not payment_intent_id or not return_url or not payment_method:
-            return Response({"error": "Payment intent ID and return URL are required and payment_method"}, status=status.HTTP_400_BAD_REQUEST)
-
-        # PayMongo API request
-        url = f"https://api.paymongo.com/v1/payment_methods"
-        auth_key = base64.b64encode(f'{settings.PAYMONGO_SECRET_KEY}:'.encode('utf-8')).decode('utf-8')
-        headers = {
-            "Authorization": f"Basic {auth_key}",
-            "Content-Type": "application/json",
-        }
-
-        # Create payment method with GCash or card as type
-        data = {
-            "data": {
-                "attributes": {
-                    "type": payment_method,
-                    "billing": {
-                        "email": request.data.get("email"),
-                        "name": request.data.get("name"),
-                    }
-                }
-            }
-        }
-
-        response = requests.post(url, json=data, headers=headers)
-
-        if response.status_code == 200:
-            payment_method_id = response.json()['data']['id']
-
-            # Attach payment method to intent
-            attach_url = f"https://api.paymongo.com/v1/payment_intents/{payment_intent_id}/attach"
-            attach_data = {
-                "data": {
-                    "attributes": {
-                        "payment_method": payment_method_id,
-                        "return_url": return_url
-                    }
-                }
-            }
-
-            attach_response = requests.post(attach_url, json=attach_data, headers=headers)
-
-            if attach_response.status_code == 200:
-                response = attach_response.json()
-                amount = response['data']['attributes']['amount']
-                description = response['data']['attributes']['description']
-                url = response['data']['attributes']['next_action']['redirect']['url']
-                retrieve_url = f"https://api.paymongo.com/v1/payment_intents/{payment_intent_id}"
-                retrieve_response = requests.get(url=retrieve_url, headers=headers)
-                print(retrieve_response.json())
-
-                return Response({"amount":amount,"description":description, "url":url}, status=status.HTTP_200_OK)
+                    # Ensure payout_amount is valid
+                    if payout_amount > 0:
+                        payout = send_payout(
+                            amount=payout_amount,
+                            booking_id=booking.pk,
+                            channel_code=booking.artist.channel_code
+                        )
+                    else:
+                        raise ValueError("Payout amount must be greater than zero.")
             else:
-                return Response(attach_response.json(), status=attach_response.status_code)
+                print(f"Payment type not found in metadata for booking_reference: {booking_reference}")
         else:
-            print(response.json())
-            return Response(response.json(), status=status.HTTP_200_OK)
+            print(f"Payment not processed or invalid status for booking_reference: {booking_reference}")
 
-class FinalPaymentIntentView(APIView):
-      def post(self, request):
-        currency = request.data.get('currency','PHP')
-        booking_id = request.data.get('booking')
-        booking = get_object_or_404(Booking, id=booking_id)
+        return JsonResponse({"status": "success"}, status=200)
 
-        booking_downpayment = Payment.objects.filter(
-            payment_type = 'downpayment',
-            booking=booking,
-            payment_status='paid',
-        ).first()
+    except json.JSONDecodeError:
+        print("Invalid JSON in the webhook payload")
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
+    except Exception as e:
+        print("Unexpected error in webhook processing:", str(e))
+        return JsonResponse({"error": "Server error"}, status=500)
 
-        if booking.amount is not None and  booking_downpayment:
-            net_amount = booking_downpayment.net_amount or Decimal(0)
-            payment_amount = Decimal(booking.amount) - Decimal(net_amount)
-        else:
-            return Response({"error": "Booking amount or downpayment not found"}, status=status.HTTP_400_BAD_REQUEST)
+@csrf_exempt
+@require_POST
+def payout_webhook(request):
+    try:
+        data = json.loads(request.body)
+        pprint(data)
+        status = data['data']['status']
+        reference_id = data['data']['reference_id']
+        payment_method = data['data']['channel_category']
+        payment_channel = data['data']['channel_code']
+        amount = Decimal(data['data']['amount'])
+        echoease_fee = Decimal("0.05")
+        print('status', status)
+        if status == 'SUCCEEDED':
+            if reference_id:
+                try:
+                    booking = Booking.objects.get(booking_reference=reference_id)
+                except Exception as e:
+                    print('ERROR',e)
+                    return JsonResponse({'message':'Error'}, status=400)
+            if booking is not None:
+                payout_fee = Decimal("10.00")
+                downpayment = Payment.objects.filter(payment_type='downpayment', booking=booking).first()
+                final_payment = Payment.objects.filter(payment_type="final_payment", booking= booking).first()
 
-        url = 'https://api.paymongo.com/v1/payment_intents'
-        secret_key =settings.PAYMONGO_SECRET_KEY
-        auth_key = base64.b64encode(f'{secret_key}:'.encode('utf-8')).decode('utf-8')
-        headers = {
-            'Authorization':f'Basic {auth_key}',
-            'Content-Type':'application/json'
-        }
-
-        payload = {
-            'data':{
-                'attributes':{
-                    'amount':int(payment_amount) * 100 , #convert to cents
-                    'payment_method_allowed':['gcash','paymaya'],
-                    'currency':currency,
-                    'description':f'Final booking payment for {booking.artist.user.first_name} {booking.artist.user.last_name}',
-                    'metadata':{
-                        'booking_id':str(booking.id)
-                    }
-                }
-            }
-        }
-
-        response = requests.post(url=url,json=payload,headers=headers)
-        if response.status_code == 200:
-            payment_intent_data = response.json()
-            payment_intent_id = payment_intent_data['data']['id']
-            return Response({"payment_intent_id":payment_intent_id},status=status.HTTP_200_OK)
-        return Response(status=status.HTTP_400_BAD_REQUEST)
-
-class AttachFinalPaymentMethodView(APIView):
-    def post(self, request):
-        booking_id = request.data.get("booking")
-        booking = get_object_or_404(Booking, id = booking_id)
-        payment_intent_id = request.data.get("payment_intent_id")
-        payment_method = request.data.get("payment_method")
-        return_url = request.data.get("return_url")
-
-        if not payment_intent_id or not return_url or not payment_method:
-            return Response({"error": "Payment intent ID and return URL are required and payment_method"}, status=status.HTTP_400_BAD_REQUEST)
-
-        # PayMongo API request
-        url = f"https://api.paymongo.com/v1/payment_methods"
-        auth_key = base64.b64encode(f'{settings.PAYMONGO_SECRET_KEY}:'.encode('utf-8')).decode('utf-8')
-        headers = {
-            "Authorization": f"Basic {auth_key}",
-            "Content-Type": "application/json",
-        }
-
-        # Create payment method with GCash or card as type
-        data = {
-            "data": {
-                "attributes": {
-                    "type": payment_method,
-                    "billing": {
-                        "email": request.data.get("email"),
-                        "name": request.data.get("name"),
-                    }
-                }
-            }
-        }
-
-        response = requests.post(url, json=data, headers=headers)
-
-        if response.status_code == 200:
-            payment_method_id = response.json()['data']['id']
-
-            # Attach payment method to intent
-            attach_url = f"https://api.paymongo.com/v1/payment_intents/{payment_intent_id}/attach"
-            attach_data = {
-                "data": {
-                    "attributes": {
-                        "payment_method": payment_method_id,
-                        "return_url": return_url
-                    }
-                }
-            }
-
-            attach_response = requests.post(attach_url, json=attach_data, headers=headers)
-
-            if attach_response.status_code == 200:
-                response = attach_response.json()
-                amount = response['data']['attributes']['amount']
-                description = response['data']['attributes']['description']
-                url = response['data']['attributes']['next_action']['redirect']['url']
-                retrieve_url = f"https://api.paymongo.com/v1/payment_intents/{payment_intent_id}"
-                retrieve_response = requests.get(url=retrieve_url, headers=headers)
-                print(retrieve_response.json())
-
-                #update booking status
-                booking.downpayment_paid()
-
-                return Response({"amount":amount,"description":description, "url":url}, status=status.HTTP_200_OK)
-            else:
-                return Response(attach_response.json(), status=attach_response.status_code)
-        else:
-            print(response.json())
-            return Response(response.json(), status=status.HTTP_200_OK)
-
-
-class FinalPaymentStatusView(APIView):
-    def post(self, request):
-        payment_intent_id = request.data.get("payment_intent_id")
-        if not payment_intent_id:
-            return Response({'error': 'payment_intent_id is required'}, status=status.HTTP_400_BAD_REQUEST)
-
-        # PayMongo API request to retrieve the payment intent status
-        url = f"https://api.paymongo.com/v1/payment_intents/{payment_intent_id}"
-        auth_key = base64.b64encode(f'{settings.PAYMONGO_SECRET_KEY}:'.encode('utf-8')).decode('utf-8')
-        headers = {
-            "Authorization": f"Basic {auth_key}",
-            "Content-Type": "application/json",
-        }
-
-        response = requests.get(url, headers=headers)
-
-        if response.status_code == 200:
-            payment_intent = response.json()
-            booking_id = payment_intent['data']['attributes']['metadata']['booking_id']
-            booking = get_object_or_404(Booking, pk=booking_id)
-            intent_status = payment_intent['data']['attributes']['status']
-
-            # Check if a final payment already exists for the booking
-            existing_payment = Payment.objects.filter(
-                payment_intent_id=payment_intent_id,
-                booking=booking
-                ).first()
-
-            if not existing_payment:
-                # No existing payment, attempt to process the payment data if it exists
-                payments = payment_intent['data']['attributes'].get('payments', [])
-
-                if len(payments) > 0:
-                    # Process the first payment in the list
-                    payment_data = payments[0]['attributes']
-                    fee = payment_data['fee']
-                    net_amount = payment_data['net_amount']
-                    gross_amount = payment_data['amount']
-                    email = payment_data['billing']['email']
-                    name = payment_data['billing']['name']
-                    payment_method_type = payment_data['source']['type']
-
-                    # Convert amounts
-                    gateway_fee = Decimal(fee) / Decimal(100)
-                    net_amount = Decimal(net_amount) / Decimal(100)
-                    gross_amount = Decimal(gross_amount) / Decimal(100)
-
-                    # Create new payment instance
+                booking_client:USER = booking.client
+                try:
                     payment = Payment.objects.create(
-                        payment_type='final_payment',
-                        payment_intent_id=payment_intent_id,
-                        booking=booking,
-                        client=booking.client,
-                        amount=gross_amount,
-                        net_amount=net_amount,
-                        service_fee=gateway_fee,
-                        payment_gateway=payment_method_type,
-                        payment_status='paid',
-                        payer_email=email,
-                        payer_name=name
-                    )
-                    #update booking status
+                                user = booking.artist.user,
+                                payment_status='paid',
+                                booking=booking,
+                                amount=booking.amount,
+                                echoease_fee = booking.amount * echoease_fee ,
+                                net_amount=amount - payout_fee,
+                                processing_fee = downpayment.processing_fee + final_payment.processing_fee + payout_fee ,
+                                payment_method=payment_method,
+                                payer_channel=payment_channel,
+                                payment_type="payout",
+                                title=f'Booking payment from {booking_client.first_name} {booking_client.last_name}'
+
+                            )
+                    payment.payment_reference  = f'PAY{payment.pk:06d}'
+                    payment.save()
                     booking.complete()
-                    print("Payment object created successfully.")
-                else:
-                    # No payments found in the payment intent
-                    print("No payments found for this payment intent.")
-            else:
-                # Payment already exists, take no action
-                print("Payment object already exists for this booking.")
+                    notify_client_of_completed_booking(booking.client, booking)
+                    notify_artist_of_completed_booking(booking.artist, booking)
 
-            # Return status based on the intent status
-            if intent_status == 'succeeded':
-                return Response({"status": "success"}, status=status.HTTP_200_OK)
-            elif intent_status == 'awaiting_payment_method':
-                return Response({"status": "pending"}, status=status.HTTP_200_OK)
-            elif intent_status == 'awaiting_next_action':
-                next_action = payment_intent['data']['attributes'].get('next_action')
-                if next_action and next_action['type'] == 'redirect':
-                    redirect_url = next_action['redirect']['url']
-                    return_url = next_action['redirect']['return_url']
-                    return Response({
-                        "status": "pending_redirect",
-                        "redirect_url": redirect_url,
-                        "return_url": return_url
-                    }, status=status.HTTP_200_OK)
-                return Response({"status": "pending_redirect"}, status=status.HTTP_200_OK)
-            else:
-                return Response({"status": "failed"}, status=status.HTTP_400_BAD_REQUEST)
+                    client_fullname = f"{booking.client.first_name} {booking.client.last_name}"
+                    artist_fullname = f"{booking.artist.user.first_name} {booking.artist.user.last_name}"          #create client notifications
 
+                    Notification.objects.create(
+                    user = booking.client,
+                    notification_type = "booking_completed",
+                    title = "Booking Event Completed!",
+                    description = f"""Dear {client_fullname},
+
+                    Thank you for being part of {booking.event_name}! We're happy to inform you that your booking has been successfully completed. We hope you had a fanstastic experience!
+
+""",
+                    booking = booking,
+                )
+
+
+                except Exception as e:
+                    print(e)
+                    return JsonResponse({'message':'Error'}, status=400)
+
+                #add reputation if no dispute booking
+                disputes = Dispute.objects.filter(booking = booking)
+                if not disputes.exists():
+                    user = booking.artist.user
+                    user.increase_reputation(5)
+                    user.save()
+                    if user.reputation_score > 100:
+                        user.reputation_score = 100
+                        user.save()
+                    try:
+                        Notification.objects.create(
+                            user=user,
+                            notification_type= "reputation",
+                            title="Reputation Points Increased",
+                            description=f"Congratulations! You've earned 5 reputation points for your successful payment. Your total reputation score is now {user.reputation_score} out of 100.",  # type: ignore
+)
+                    except Exception as e:
+                        print(e)
+
+
+                notification = Notification.objects.create(
+                            notification_type = 'dibursement_received',
+                            user = booking.artist.user,
+                            title=f"Your booking with Echoer {booking_client.first_name} {booking_client.last_name} is fully paid. Please check your connected bank or wallet account.",
+                            description=f"Great news! Echoer {booking.client.first_name.title()} {booking.client.last_name.title()} has successfully paid for your confirmed booking!",  # type: ignore
+                            booking=booking
+                        )
+                notify_artist_of_paid_final_payment(artist=booking.artist.user, booking=booking)
+                Notification.objects.create(
+                    user = booking.artist.user,
+                    notification_type = "booking_completed",
+                    title = "Booking Event Completed!",
+                    description = f"""Dear {artist_fullname},
+
+                    Thank you for attending {booking.event_name}! We are pleased to confirm that your booking has been successfully completed.
+
+                    We hope you had an enjoyable time and that the event met your expectations.
+""",
+                    booking = booking
+                )
+            return JsonResponse({"status": "success"}, status=200)
         else:
-            return Response(response.json(), status=response.status_code)
-
-
-
-
-
-
-
-
-# from django.shortcuts import render
-
-# # Create your views here.
-# from rest_framework.views import APIView
-# from rest_framework.response import Response
-# from rest_framework import status
-# from .utils import create_paypal_order,capture_payment, create_paymongo_payment_link
-# from django.shortcuts import get_object_or_404
-# from booking.models import Booking
-# from django.http import Http404
-# from payment.models import DownPayment, Payment, Payout
-# from decimal import Decimal, InvalidOperation
-# from django.conf import settings
-# import base64
-# import requests
-# from notification.utils import notify_artist_of_paid_downpayment
-
-
-# class DownPaymentStatusView(APIView):
-#     def post(self, request):
-#         payment_intent_id = request.data.get("payment_intent_id")
-#         if not payment_intent_id:
-#             return Response({'error':'payment_intent_id is required'},status=status.HTTP_400_BAD_REQUEST)
-
-#         # PayMongo API request to retrieve the payment intent status
-#         url = f"https://api.paymongo.com/v1/payment_intents/{payment_intent_id}"
-#         auth_key = base64.b64encode(f'{settings.PAYMONGO_SECRET_KEY}:'.encode('utf-8')).decode('utf-8')
-#         headers = {
-#             "Authorization": f"Basic {auth_key}",
-#             "Content-Type": "application/json",
-#         }
-
-#         response = requests.get(url, headers=headers)
-
-#         if response.status_code == 200:
-#             payment_intent = response.json()
-#             intent_status = payment_intent['data']['attributes']['status']
-#             print(payment_intent)
-#            # Check if a downpayment already exists for the booking
-
-#             # Getting booking id reference
-#             booking_id = payment_intent['data']['attributes']['metadata']['booking_id']
-#             booking = get_object_or_404(Booking, id= booking_id)
-
-#             existing_downpayment = booking.down_payment.filter(payment_intent_id=payment_intent['data']['id']).first()
-#             if not existing_downpayment:
-#             # No existing downpayment, create a new one
-#                 payment_data = payment_intent['data']['attributes']['payments'][0]['attributes']
-#                 fee = payment_data['fee']
-#                 net_amount = payment_data['net_amount']
-#                 gross_amount = payment_data['amount']
-#                 email = payment_data['billing']['email']
-#                 name = payment_data['billing']['name']
-#                 payment_status = payment_data['status']
-#                 payment_method_type = payment_data['source']['type']
-
-#                 # Convert amounts
-#                 gateway_fee = Decimal(fee) / Decimal(100)
-#                 net_amount = Decimal(net_amount)/ Decimal(100)
-#                 gross_amount = Decimal(gross_amount) / Decimal(100)
-
-#                 # Create new downpayment instance
-#                 downpayment = DownPayment.objects.create(
-#                     booking=booking,
-#                     payment_intent_id=payment_intent['data']['id'],
-#                     amount=gross_amount,
-#                     processing_fee=gateway_fee,
-#                     net_amount=net_amount,
-#                     payment_status='paid',
-#                     payment_method=payment_method_type,
-#                     payer_email=email,
-#                     payer_name=name,
-
-#                 )
-#                 print("Downpayment created successfully.")
-#                 #update booking status
-#                 booking.downpayment_paid()
-#                 notify_artist_of_paid_downpayment(artist=booking.artist.user, booking=booking)
-
-#             else:
-#                 # Downpayment already exists, take no action
-#                 print("Downpayment already exists for this booking.")
-#             if intent_status == 'succeeded':
-#                 return Response({"status": "success", "booking_id":booking.id}, status=status.HTTP_200_OK)
-#             elif intent_status == 'awaiting_payment_method':
-#                 return Response({"status": "pending"}, status=status.HTTP_200_OK)
-#             elif intent_status == 'awaiting_next_action':
-#                 return Response({"status": "pending_redirect"}, status=status.HTTP_200_OK)
-#             else:
-#                 return Response({"status": "failed"}, status=status.HTTP_400_BAD_REQUEST)
-#         else:
-#             return Response(response.json(), status=response.status_code)
-
-# class CreateDownPaymentIntentView(APIView):
-#     def post(self, request):
-#         currency = request.data.get('currency', 'PHP')
-#         booking_id = request.data.get('booking')
-#         booking = get_object_or_404(Booking, id=booking_id)
-
-#         # Calculate downpayment amount (20% of the rate)
-#         downpayment_amount = (Decimal(booking.rate.amount) * Decimal(0.20)).quantize(Decimal('0.01'))
-
-#         # Log downpayment amount for debugging
-#         print('Downpayment Amount:', downpayment_amount)
-
-#         # Convert downpayment to integer cents
-#         amount_in_cents = int(downpayment_amount * 100)
-#         print('Amount in Cents:', amount_in_cents)
-
-#         # Prepare PayMongo API request
-#         url = 'https://api.paymongo.com/v1/payment_intents'
-#         secret_key = settings.PAYMONGO_SECRET_KEY
-#         auth_key = base64.b64encode(f'{secret_key}:'.encode('utf-8')).decode('utf-8')
-#         headers = {
-#             'Authorization': f'Basic {auth_key}',
-#             'Content-Type': 'application/json'
-#         }
-
-#         payload = {
-#             'data': {
-#                 'attributes': {
-#                     'amount': amount_in_cents,
-#                     'payment_method_allowed': ['gcash', 'paymaya'],
-#                     'currency': currency,
-#                     'description': f'Booking down payment for {booking.artist.user.first_name} {booking.artist.user.last_name}',
-#                     'metadata': {
-#                         'booking_id':str(booking.id)
-#                     }
-#                 }
-#             }
-#         }
-
-#         # Make the API request to PayMongo
-#         response = requests.post(url=url, json=payload, headers=headers)
-
-#         # Check the response status and handle accordingly
-#         if response.status_code == 200:
-#             payment_intent_data = response.json()
-#             payment_intent_id = payment_intent_data['data']['id']
-#             return Response({"payment_intent_id": payment_intent_id}, status=status.HTTP_200_OK)
-
-#         # Handle errors from PayMongo
-#         return Response(response.json(), status=response.status_code)
-
-# class AttachPaymentMethodView(APIView):
-#     def post(self, request):
-#         booking_id = request.data.get("booking")
-#         booking = get_object_or_404(Booking, id = booking_id)
-#         payment_intent_id = request.data.get("payment_intent_id")
-#         payment_method = request.data.get("payment_method")
-#         return_url = request.data.get("return_url")
-
-#         if not payment_intent_id or not return_url or not payment_method:
-#             return Response({"error": "Payment intent ID and return URL are required and payment_method"}, status=status.HTTP_400_BAD_REQUEST)
-
-#         # PayMongo API request
-#         url = f"https://api.paymongo.com/v1/payment_methods"
-#         auth_key = base64.b64encode(f'{settings.PAYMONGO_SECRET_KEY}:'.encode('utf-8')).decode('utf-8')
-#         headers = {
-#             "Authorization": f"Basic {auth_key}",
-#             "Content-Type": "application/json",
-#         }
-
-#         # Create payment method with GCash or card as type
-#         data = {
-#             "data": {
-#                 "attributes": {
-#                     "type": payment_method,
-#                     "billing": {
-#                         "email": request.data.get("email"),
-#                         "name": request.data.get("name"),
-#                     }
-#                 }
-#             }
-#         }
-
-#         response = requests.post(url, json=data, headers=headers)
-
-#         if response.status_code == 200:
-#             payment_method_id = response.json()['data']['id']
-
-#             # Attach payment method to intent
-#             attach_url = f"https://api.paymongo.com/v1/payment_intents/{payment_intent_id}/attach"
-#             attach_data = {
-#                 "data": {
-#                     "attributes": {
-#                         "payment_method": payment_method_id,
-#                         "return_url": return_url
-#                     }
-#                 }
-#             }
-
-#             attach_response = requests.post(attach_url, json=attach_data, headers=headers)
-
-#             if attach_response.status_code == 200:
-#                 response = attach_response.json()
-#                 amount = response['data']['attributes']['amount']
-#                 description = response['data']['attributes']['description']
-#                 url = response['data']['attributes']['next_action']['redirect']['url']
-#                 retrieve_url = f"https://api.paymongo.com/v1/payment_intents/{payment_intent_id}"
-#                 retrieve_response = requests.get(url=retrieve_url, headers=headers)
-#                 print(retrieve_response.json())
-
-#                 return Response({"amount":amount,"description":description, "url":url}, status=status.HTTP_200_OK)
-#             else:
-#                 return Response(attach_response.json(), status=attach_response.status_code)
-#         else:
-#             print(response.json())
-#             return Response(response.json(), status=status.HTTP_200_OK)
-
-# class FinalPaymentIntentView(APIView):
-#       def post(self, request):
-#         currency = request.data.get('currency','PHP')
-#         booking_id = request.data.get('booking')
-#         booking = get_object_or_404(Booking, id=booking_id)
-#         booking_downpayment = booking.down_payment.filter(booking = booking).first()
-#         payment_amount = Decimal(booking.rate.amount) - booking_downpayment.net_amount
-
-#         print(int(payment_amount) * 100)
-
-#         url = 'https://api.paymongo.com/v1/payment_intents'
-#         secret_key =settings.PAYMONGO_SECRET_KEY
-#         auth_key = base64.b64encode(f'{secret_key}:'.encode('utf-8')).decode('utf-8')
-#         headers = {
-#             'Authorization':f'Basic {auth_key}',
-#             'Content-Type':'application/json'
-#         }
-
-#         payload = {
-#             'data':{
-#                 'attributes':{
-#                     'amount':int(payment_amount) * 100,
-#                     'payment_method_allowed':['gcash','paymaya'],
-#                     'currency':currency,
-#                     'description':f'Final booking payment for {booking.artist.user.first_name} {booking.artist.user.last_name}',
-#                     'metadata':{
-#                         'booking_id':str(booking.id)
-#                     }
-#                 }
-#             }
-#         }
-
-#         response = requests.post(url=url,json=payload,headers=headers)
-#         if response.status_code == 200:
-#             payment_intent_data = response.json()
-#             payment_intent_id = payment_intent_data['data']['id']
-#             return Response({"payment_intent_id":payment_intent_id},status=status.HTTP_200_OK)
-#         return Response(status=status.HTTP_400_BAD_REQUEST)
-
-# class AttachFinalPaymentMethodView(APIView):
-#     def post(self, request):
-#         booking_id = request.data.get("booking")
-#         booking = get_object_or_404(Booking, id = booking_id)
-#         payment_intent_id = request.data.get("payment_intent_id")
-#         payment_method = request.data.get("payment_method")
-#         return_url = request.data.get("return_url")
-
-#         if not payment_intent_id or not return_url or not payment_method:
-#             return Response({"error": "Payment intent ID and return URL are required and payment_method"}, status=status.HTTP_400_BAD_REQUEST)
-
-#         # PayMongo API request
-#         url = f"https://api.paymongo.com/v1/payment_methods"
-#         auth_key = base64.b64encode(f'{settings.PAYMONGO_SECRET_KEY}:'.encode('utf-8')).decode('utf-8')
-#         headers = {
-#             "Authorization": f"Basic {auth_key}",
-#             "Content-Type": "application/json",
-#         }
-
-#         # Create payment method with GCash or card as type
-#         data = {
-#             "data": {
-#                 "attributes": {
-#                     "type": payment_method,
-#                     "billing": {
-#                         "email": request.data.get("email"),
-#                         "name": request.data.get("name"),
-#                     }
-#                 }
-#             }
-#         }
-
-#         response = requests.post(url, json=data, headers=headers)
-
-#         if response.status_code == 200:
-#             payment_method_id = response.json()['data']['id']
-
-#             # Attach payment method to intent
-#             attach_url = f"https://api.paymongo.com/v1/payment_intents/{payment_intent_id}/attach"
-#             attach_data = {
-#                 "data": {
-#                     "attributes": {
-#                         "payment_method": payment_method_id,
-#                         "return_url": return_url
-#                     }
-#                 }
-#             }
-
-#             attach_response = requests.post(attach_url, json=attach_data, headers=headers)
-
-#             if attach_response.status_code == 200:
-#                 response = attach_response.json()
-#                 amount = response['data']['attributes']['amount']
-#                 description = response['data']['attributes']['description']
-#                 url = response['data']['attributes']['next_action']['redirect']['url']
-#                 retrieve_url = f"https://api.paymongo.com/v1/payment_intents/{payment_intent_id}"
-#                 retrieve_response = requests.get(url=retrieve_url, headers=headers)
-#                 print(retrieve_response.json())
-
-#                 #update booking status
-#                 booking.downpayment_paid()
-
-#                 return Response({"amount":amount,"description":description, "url":url}, status=status.HTTP_200_OK)
-#             else:
-#                 return Response(attach_response.json(), status=attach_response.status_code)
-#         else:
-#             print(response.json())
-#             return Response(response.json(), status=status.HTTP_200_OK)
-
-
-# class FinalPaymentStatusView(APIView):
-#     def post(self, request):
-#         payment_intent_id = request.data.get("payment_intent_id")
-#         if not payment_intent_id:
-#             return Response({'error': 'payment_intent_id is required'}, status=status.HTTP_400_BAD_REQUEST)
-
-#         # PayMongo API request to retrieve the payment intent status
-#         url = f"https://api.paymongo.com/v1/payment_intents/{payment_intent_id}"
-#         auth_key = base64.b64encode(f'{settings.PAYMONGO_SECRET_KEY}:'.encode('utf-8')).decode('utf-8')
-#         headers = {
-#             "Authorization": f"Basic {auth_key}",
-#             "Content-Type": "application/json",
-#         }
-
-#         response = requests.get(url, headers=headers)
-
-#         if response.status_code == 200:
-#             payment_intent = response.json()
-#             booking_id = payment_intent['data']['attributes']['metadata']['booking_id']
-#             booking = get_object_or_404(Booking, pk=booking_id)
-#             intent_status = payment_intent['data']['attributes']['status']
-
-#             # Check if a final payment already exists for the booking
-#             existing_payment = booking.payment.filter(payment_intent_id=payment_intent['data']['id']).first()
-
-#             if not existing_payment:
-#                 # No existing payment, attempt to process the payment data if it exists
-#                 payments = payment_intent['data']['attributes'].get('payments', [])
-
-#                 if len(payments) > 0:
-#                     # Process the first payment in the list
-#                     payment_data = payments[0]['attributes']
-#                     fee = payment_data['fee']
-#                     net_amount = payment_data['net_amount']
-#                     gross_amount = payment_data['amount']
-#                     email = payment_data['billing']['email']
-#                     name = payment_data['billing']['name']
-#                     payment_status = payment_data['status']
-#                     payment_method_type = payment_data['source']['type']
-
-#                     # Convert amounts
-#                     gateway_fee = Decimal(fee) / Decimal(100)
-#                     net_amount = Decimal(net_amount) / Decimal(100)
-#                     gross_amount = Decimal(gross_amount) / Decimal(100)
-
-#                     # Create new payment instance
-#                     payment_obj = Payment.objects.create(
-#                         payment_intent_id=payment_intent_id,
-#                         booking=booking,
-#                         client=booking.client,
-#                         gross_amount=gross_amount,
-#                         net_amount=net_amount,
-#                         processing_fee=gateway_fee,
-#                         payment_method=payment_method_type,
-#                         payment_status=payment_status,
-#                         payer_email=email,
-#                         payer_name=name
-#                     )
-#                     #update booking status
-#                     booking.complete()
-#                     print("Payment object created successfully.")
-#                 else:
-#                     # No payments found in the payment intent
-#                     print("No payments found for this payment intent.")
-#             else:
-#                 # Payment already exists, take no action
-#                 print("Payment object already exists for this booking.")
-
-#             # Return status based on the intent status
-#             if intent_status == 'succeeded':
-#                 return Response({"status": "success"}, status=status.HTTP_200_OK)
-#             elif intent_status == 'awaiting_payment_method':
-#                 return Response({"status": "pending"}, status=status.HTTP_200_OK)
-#             elif intent_status == 'awaiting_next_action':
-#                 next_action = payment_intent['data']['attributes'].get('next_action')
-#                 if next_action and next_action['type'] == 'redirect':
-#                     redirect_url = next_action['redirect']['url']
-#                     return_url = next_action['redirect']['return_url']
-#                     return Response({
-#                         "status": "pending_redirect",
-#                         "redirect_url": redirect_url,
-#                         "return_url": return_url
-#                     }, status=status.HTTP_200_OK)
-#                 return Response({"status": "pending_redirect"}, status=status.HTTP_200_OK)
-#             else:
-#                 return Response({"status": "failed"}, status=status.HTTP_400_BAD_REQUEST)
-
-#         else:
-#             return Response(response.json(), status=response.status_code)
+            return JsonResponse({'message':'Error'}, status=400)
+    except Exception as e:
+        print('ERROR', e)
+        return JsonResponse({'message':'Error'}, status=400)
+
+@csrf_exempt
+@require_POST
+def refund_success_webhook(request):
+    try:
+        # Parse request body
+        response = json.loads(request.body)
+        pprint(response)
+
+        # Extract necessary data
+        data = response.get('data', {})
+        payment_id = data.get('metadata', {}).get('payment_id')
+        amount = data.get('amount')
+        reason = data.get('reason')
+        refund_id = data.get('id')
+
+        # Validate required fields
+        if not all([payment_id, amount, reason, refund_id]):
+            return JsonResponse({"status": "error", "message": "Invalid payload"}, status=400)
+
+        # Retrieve the associated payment
+        try:
+            payment = Payment.objects.get(pk=payment_id)
+        except Payment.DoesNotExist:
+            return JsonResponse({"status": "error", "message": f"Payment not found with ID {payment_id}"}, status=404)
+
+        # Create refund record
+        refund = Refund.objects.create(
+            payment=payment,
+            refund_id=refund_id,
+            amount=amount,
+            reason=reason,
+        )
+
+        # Create transaction record
+        Transaction.objects.create(
+            transaction_type='refund',
+            user=payment.user,
+            amount=amount,
+            payment=payment,
+            title=f'Refund Received for Payment #{payment.payment_reference}',
+            booking=payment.booking,
+        )
+
+        payment_user:USER = payment.user
+
+        # Notify the user about the refund
+        notify_refunded_payment(user=payment.user)
+
+        # Create notification record
+        Notification.objects.create(
+            notification_type='refund_received',
+            user=payment.user,
+            title=f"Refund Received for Payment #{payment.payment_reference}",
+            description=(
+                f"{payment_user.first_name.title()} {payment_user.last_name.title()}, "
+                f"you received a refund for your booking payment of PHP {amount:.2f}. "
+                f"The reason for the refund is: {reason}."
+            ),
+            booking=payment.booking
+        )
+
+        return JsonResponse({"status": "success"}, status=200)
+
+    except json.JSONDecodeError:
+        return JsonResponse({"status": "error", "message": "Invalid JSON payload"}, status=400)
+    except Exception as e:
+        print(f"Error processing refund webhook: {e}")
+        return JsonResponse({"status": "error", "message": "Internal server error"}, status=500)
+
+
+@csrf_exempt
+@require_POST
+def refund_failed_webhook(request):
+    try:
+        response = json.loads(request.body)
+        data = response['data']
+        amount = data['amount']
+        print(response)
+
+        return JsonResponse({"status": "success"}, status=200)
+    except Exception as e:
+        print(e)
+        return JsonResponse({"status": "error"}, status=400)

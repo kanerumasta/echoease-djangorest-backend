@@ -1,6 +1,7 @@
-from datetime import datetime
-from django.conf import settings
 
+from django.conf import settings
+import requests
+from users.models import BusinessBoost
 from djoser.social.views import ProviderAuthView
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
@@ -15,7 +16,11 @@ from rest_framework.decorators import api_view, permission_classes, authenticati
 from .models import UserAccount, Profile
 from django.shortcuts import get_object_or_404
 import pytz
+from rest_framework.authentication import authenticate
 from rest_framework.permissions import AllowAny
+from logs.models import UserLogs
+
+
 
 
 class CustomProviderAuthView(ProviderAuthView):
@@ -49,6 +54,10 @@ class CustomProviderAuthView(ProviderAuthView):
         return response
 class CustomTokenObtainPairView(TokenObtainPairView):
     def post(self, request, *args, **kwargs):
+        email = request.data.get('email')
+        password = request.data.get('password')
+        user = authenticate(email=email, password=password)
+
         response = super().post(request, *args, **kwargs)
         if response.status_code == 200:
             access_token = response.data.get('access') # type: ignore
@@ -61,7 +70,6 @@ class CustomTokenObtainPairView(TokenObtainPairView):
                 secure=settings.AUTH_COOKIE_SECURE,
                 path=settings.AUTH_COOKIE_PATH,
                 samesite=settings.AUTH_COOKIE_SAMESITE
-
                 )
 
             response.set_cookie(
@@ -73,6 +81,26 @@ class CustomTokenObtainPairView(TokenObtainPairView):
                 samesite=settings.AUTH_COOKIE_SAMESITE
 
                 )
+    #             action = models.CharField(max_length=60)
+    # ip_address = models.GenericIPAddressField(null=True, blank=True)
+    # timestamp = models.DateTimeField(auto_now_add=True)
+    # message = models.TextField(null=True, blank=True)
+
+        ip = request.META['REMOTE_ADDR']
+
+
+        #log user
+        try:
+            UserLogs.objects.create(
+                user = user,
+                action='LOGIN',
+                ip_address = ip,
+                message = "User Logged in"
+            )
+        except Exception as e:
+            print(e)
+
+
 
         return response
 class CustomTokenRefreshView(TokenRefreshView):
@@ -107,6 +135,24 @@ class LogoutView(APIView):
         response = Response(status=status.HTTP_204_NO_CONTENT)
         response.delete_cookie('access')
         response.delete_cookie('refresh')
+
+        # Log the user activity
+        user = request.user  # Assuming the user is authenticated and part of the request
+        ip_address = request.META.get('REMOTE_ADDR')  # Capture the user's IP address
+        log_message = f"User {user.first_name} {user.last_name} logged out"
+
+        # Create a new log entry
+
+        log = UserLogs.objects.create(
+            user=user,
+            action='LOGOUT',
+            ip_address=ip_address,
+            message=log_message
+        )
+
+
+
+
 
         return response
 
@@ -159,13 +205,13 @@ class UserView(APIView):
             user = get_object_or_404(UserAccount, id=id)
             if user.is_staff or user.is_superuser or not user.is_active:
                 return Response(status=status.HTTP_404_NOT_FOUND)
-            serializer = UserAccountSerializer(user)
+            serializer = UserAccountSerializer(user, context={'request':request})
             return Response(serializer.data, status=status.HTTP_200_OK)
 
         try:
             user = UserAccount.objects.get(pk = request.user.id)
             print('User',user)
-            serializer = UserAccountSerializer(user)
+            serializer = UserAccountSerializer(user,context={'request':request})
             return Response(serializer.data, status = status.HTTP_200_OK)
         except Exception as e:
             print(e)
@@ -174,7 +220,7 @@ class UserView(APIView):
 
     #picking role before booking | organizer | regular | bar owner
     def patch(self, request):
-        serializer = UserAccountSerializer(request.user,data = request.data, partial = True)
+        serializer = UserAccountSerializer(request.user,data = request.data, partial = True, context={'request':request})
         if serializer.is_valid():
             serializer.save()
             request.user.is_roled = True
@@ -221,7 +267,19 @@ class PasswordResetView(APIView):
             print(e)
             return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+class DeactivateAccountView(APIView):
+    def post(self, request):
+        user = request.user
+        user.is_deactivated = True
+        user.save()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
+class ActivateAccountView(APIView):
+    def post(self, request):
+        user = request.user
+        user.is_deactivated = False
+        user.save()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 @api_view(['GET'])
@@ -239,3 +297,69 @@ def check_email(request, email):
     if user:
         return Response({'exists':True}, status=status.HTTP_200_OK)
     return Response({'exists':False},status=status.HTTP_200_OK)
+
+@api_view(['POST'])
+def initiate_boost_auth(request):
+    redirect_uri = request.data.get('redirect_uri')
+    if not redirect_uri:
+        return Response({'error':'redirect_uri is required'},status = status.HTTP_400_BAD_REQUEST)
+
+    url = f'https://www.facebook.com/v13.0/dialog/oauth?client_id={settings.FACEBOOK_CLIENT_ID}&redirect_uri={redirect_uri}&scope=pages_manage_posts,publish_pages,pages_show_list,pages_read_engagement'
+
+    return Response({'url':url}, status = status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+def authorize_business_boost(request):
+    user = request.user
+    code = request.data.get('code')
+    redirect_uri = request.data.get('redirect_uri')
+
+    if not code or not redirect_uri:
+        return Response({'error':'code and redirect_uri are required'},status = status.HTTP_400_BAD_REQUEST)
+
+    #exchange code with app access token
+    print('client id', settings.FACEBOOK_CLIENT_ID)
+    exchange_url = f"https://graph.facebook.com/v13.0/oauth/access_token?client_id={settings.FACEBOOK_CLIENT_ID}&redirect_uri={redirect_uri}&client_secret={settings.FACEBOOK_CLIENT_SECRET}&code={code}"
+
+    print('URL', exchange_url)
+
+    response = requests.get(exchange_url)
+    response_data = response.json()
+    print(response_data)
+    access_token = response_data.get('access_token')
+    if not access_token:
+        return Response({'error':'Failed to exchange code for access token'},status = status.HTTP_400_BAD_REQUEST)
+
+    #fetch facebook page details (page_id, page_name, etc. weewww)
+    page_url = f"https://graph.facebook.com/v13.0/me/accounts?access_token={access_token}"
+    page_response = requests.get(page_url)
+    page_data = page_response.json()
+    if not page_data or 'data' not in page_data:
+        return Response({'error':'Failed to fetch page details'},status = status.HTTP_400_BAD_REQUEST)
+    #extract page details from returned data
+    page_id = page_data['data'][0]['id']
+    page_name = page_data['data'][0]['name']
+    page_access_token = page_data['data'][0]['access_token']
+
+    try:
+        #create business boost record if it doesn't exist
+        business_boost, created = BusinessBoost.objects.get_or_create(
+            user = user,
+            defaults={
+                'page_id': page_id,
+                'page_name': page_name,
+                'is_active': True,
+            }
+        )
+        if not created:
+            business_boost.page_id = page_id
+            business_boost.page_name = page_name
+            business_boost.is_active = True
+        business_boost.set_access_token(page_access_token)
+        user.business_boost_opted = True
+        business_boost.save()
+        user.save()
+        return Response({'message':'Success'}, status = status.HTTP_200_OK)
+    except Exception as e:
+        return Response({'error':'Failed to create business boost record'},status = status.HTTP_500_INTERNAL_SERVER_ERROR)

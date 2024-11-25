@@ -3,6 +3,9 @@ from rest_framework import serializers
 from users.serializers import UserProfileSerializer
 from .models import PortfolioItemMedia ,Portfolio, PortfolioItem, Portfolio, Artist, ArtistApplication, Genre, IDType, Rate, ConnectionRequest
 from django.utils.dateformat import time_format
+from datetime import datetime
+from django.utils import timezone
+
 
 class PortfolioItemMediaSerializer(serializers.ModelSerializer):
     class Meta:
@@ -34,16 +37,26 @@ class GenreSerializer(serializers.ModelSerializer):
 class RateSerializer (serializers.ModelSerializer):
     class Meta:
         model =Rate
-        fields = ["id","amount","name", "artist_application", "artist","description"]
+        fields = ["id","amount","name", "artist","description"]
 
 class ArtistSerializer(serializers.ModelSerializer):
     user = UserProfileSerializer(read_only=True)
+    is_available = serializers.SerializerMethodField()
     artist_rates = RateSerializer(read_only=True, many=True)
     genres = GenreSerializer(many=True)
-
+    portfolio = serializers.PrimaryKeyRelatedField(read_only=True)
+    is_new = serializers.SerializerMethodField()
     class Meta:
         model = Artist
-        fields = ['id','bio', 'slug','genres','fb_link','instagram','twitter','status','user','followers','date_approved','time_approved', 'spotify', 'youtube','artist_rates','idol','years_experience','award_image1','award_image2','award_image3','portfolio', 'connections']
+        fields = '__all__'
+
+    def get_is_new(self, obj):
+        return obj.created_at >=  timezone.now() - timezone.timedelta(days=1)
+
+    def get_is_available(self, obj):
+        has_sched = obj.availabilities.exists() or obj.recurring_availabilities.exists()
+        return has_sched
+
 
     def to_representation(self, instance):
         representation =  super().to_representation(instance)
@@ -51,24 +64,80 @@ class ArtistSerializer(serializers.ModelSerializer):
         return representation
 
 
-class ArtistApplicationSerializer(serializers.ModelSerializer):
+# class ArtistApplicationSerializer(serializers.ModelSerializer):
 
+#     genres = serializers.PrimaryKeyRelatedField(
+#         queryset=Genre.objects.all(),
+#         many=True,
+#     )
+#     class Meta:
+#         model = ArtistApplication
+#         fields = '__all__'
+
+#     def create(self, validated_data):
+
+#         user = validated_data.pop('user')
+#         genres = validated_data.pop('genres',[])
+#         application = ArtistApplication.objects.create(user=user, **validated_data)
+#         application.genres.set(genres)
+
+#         return application
+
+
+#  bio = models.TextField(null=True, blank=True)
+#     slug = models.SlugField(max_length=255, blank=True, null=True)
+#     genres = models.ManyToManyField(Genre, blank=True)
+#     stage_name = models.CharField(max_length=255, null=True, blank=True)
+
+
+#     # Socials
+#     fb_link = models.CharField(max_length=255, null=True, blank=True)
+#     instagram = models.CharField(max_length=255, null=True, blank=True)
+#     twitter = models.CharField(max_length=255, null=True, blank=True)
+#     status = models.CharField(max_length=10,default='active', choices=STATUS, null=True, blank=True)
+#     #Relationships
+#     user = models.OneToOneField(User,related_name="artist",on_delete=models.CASCADE, unique=True)
+#     followers = models.ManyToManyField(User, related_name="artists_followed", blank=True)
+#     created_at = models.DateTimeField(auto_now_add=True)
+#     updated_at = models.DateTimeField(auto_now=True)
+#     #new fields
+#     spotify =models.CharField(max_length=255, null=True, blank=True)
+#     youtube = models.CharField(max_length=255, null=True, blank=True)
+#     idol = models.CharField(max_length=255, null=True, blank=True)
+#     years_experience = models.IntegerField(null=True, blank=True)
+#     award_image1 = models.ImageField(upload_to="images/awards", null=True, blank=True)
+#     award_image2 = models.ImageField(upload_to="images/awards", null=True, blank=True)
+#     award_image3 = models.ImageField(upload_to="images/awards", null=True, blank=True)
+
+#     connections= models.ManyToManyField('self', symmetrical=True, blank=True)
+
+#     #BANK DETAIL
+#     channel_code = models.CharField(max_length=20, null=True, blank=True)
+#     account_holder_name = models.CharField(max_length=255, null=True, blank=True)
+#     encrypted_account_number = models.BinaryField(max_length=255,null=True, blank=True)
+
+class ArtistApplicationSerializer(serializers.ModelSerializer):
     genres = serializers.PrimaryKeyRelatedField(
         queryset=Genre.objects.all(),
         many=True,
     )
+
     class Meta:
-        model = ArtistApplication
-        fields = '__all__'
+        model = Artist
+        fields = [
+            'bio','slug','genres','stage_name','user',"id",
+            'fb_link','instagram','twitter','spotify','youtube',
+            'channel_code','account_holder_name','account_number',
+        ]
 
     def create(self, validated_data):
-
         user = validated_data.pop('user')
         genres = validated_data.pop('genres',[])
-        application = ArtistApplication.objects.create(user=user, **validated_data)
-        application.genres.set(genres)
 
-        return application
+        artist = Artist.objects.create(user=user, **validated_data)
+        artist.genres.set(genres)
+
+        return artist
 
 class IDTypeSerializer(serializers.ModelSerializer):
     class Meta:
@@ -104,8 +173,6 @@ class ArtistConnectionsSerializer(serializers.ModelSerializer):
     class Meta:
         model = Artist
         fields =['connections']
-
-
 
 class RecommendedArtistSerializer(serializers.ModelSerializer):
     user = UserProfileSerializer(read_only=True)
